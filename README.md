@@ -22,5 +22,6 @@ not appear anywhere in the same row, column or box).
 * For each such value, replace the
 0 at the relevant position in the source grid with that value, and solve the revised grid recursively.
 
-The `solve` function returns a list of solutions. The `sudoku` function takes the head of the
+The `solve` function returns a list of solutions, each of which is a grid where 
+all 81 values are non-zero. The `sudoku` function takes the head of the
 returned list; thus evaluation terminates as soon as a solution is found.
