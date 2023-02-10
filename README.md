@@ -6,7 +6,7 @@ To run the solver, load the file `sudoku.hs` into `ghci`, and enter the
 command `sudoku puzzle`. The puzzle in question is the one which was 
 claimed a few years ago to be the hardest Sudoku puzzle ever devised.
 
-The puzzle is assumed to be a 9x9 grid (a list of nine lists, each of which contains nine `Int`s) where an empty
+The puzzle is validated to ensure that it is a 9x9 grid (a list of nine lists, each of which contains nine `Int`s) where an empty
 square is represented by 0 and a non-empty one by the number (in the range
 1 to 9 inclusive) it contains.
 

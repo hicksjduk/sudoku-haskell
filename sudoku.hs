@@ -5,6 +5,9 @@ import Data.List
 type Grid = [[Int]]
 type Coords = (Int, Int)
 
+permittedValues = [1..9]
+emptySquare = 0
+
 display :: Grid -> String
 display grid = unlines $ map (unwords . map show) grid
 
@@ -21,9 +24,15 @@ puzzle = [[8,0,0,0,0,0,0,0,0],
           [0,9,0,0,0,0,4,0,0]]
 
 sudoku :: Grid -> Either String Grid
-sudoku grid = case solve grid of
-  [] -> Left "Not solvable"
-  (s:_) -> Right s
+sudoku grid = if invalid grid then Left "Invalid grid" 
+  else case solve grid of
+    [] -> Left "Not solvable"
+    (s:_) -> Right s
+
+invalid :: Grid -> Bool
+invalid grid = length grid /= length permittedValues ||
+  any ((/= length permittedValues) . length) grid ||
+  any (any (`notElem` emptySquare : permittedValues)) grid
 
 solve :: Grid -> [Grid]
 solve grid = case emptyCells grid of
@@ -34,7 +43,7 @@ emptyCells :: Grid -> [Coords]
 emptyCells grid = concatMap coords colsByRow
   where
     coords (row, cols) = zip (repeat row) cols
-    colsByRow = zip [0..] $ map (elemIndices 0) grid
+    colsByRow = zip [0..] $ map (elemIndices emptySquare) grid
 
 solveAt :: Coords -> Grid -> [Grid]
 solveAt square grid = concatMap solveUsing $ allowedValues square grid
@@ -52,19 +61,19 @@ replaceValueAt index value xs = case splitAt index xs of
   (before, _:after) -> before ++ value : after
 
 allowedValues :: Coords -> Grid -> [Int]
-allowedValues square@(row, col) grid = [1..9] \\ blockedValues
+allowedValues square@(row, col) grid = permittedValues \\ blockedValues
   where
     blockedValues = concatMap ($ grid) 
       [rowValues row, colValues col, boxValues square]
 
 rowValues :: Int -> Grid -> [Int]
-rowValues row grid = filter (/=0) $ grid !! row
+rowValues row grid = filter (/=emptySquare) $ grid !! row
 
 colValues :: Int -> Grid -> [Int]
-colValues col grid = filter (/=0) $ map (!! col) grid
+colValues col grid = filter (/=emptySquare) $ map (!! col) grid
 
 boxValues :: Coords -> Grid -> [Int]
-boxValues (row, col) grid = filter (/=0) values
+boxValues (row, col) grid = filter (/=emptySquare) values
   where
     (rowsPerBox, colsPerBox) = boxSize grid
     boxStart i perBox = (i `div` perBox) * perBox
