@@ -8,9 +8,11 @@ claimed a few years ago to be the hardest Sudoku puzzle ever devised.
 
 The puzzle is assumed to be a 9x9 grid (a list of nine lists, each of which contains nine `Int`s) where an empty
 square is represented by 0 and a non-empty one by the number (in the range
-1 to 9 inclusive) it contains. It is also assumed to be solvable; if no solution
-is found, the program will take quite a long time to run, and then
-terminate with an error.
+1 to 9 inclusive) it contains.
+
+The `sudoku` function validates the input grid to ensure it is solvable: this is
+always true unless any row, column or box contains duplicate values. If it is not solvable,
+an error message is issued, otherwise the first solution found is returned.
 
 The program uses a straightforward, brute-force algorithm to solve the puzzle.
 For any given grid:
