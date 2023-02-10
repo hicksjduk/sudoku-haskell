@@ -10,9 +10,8 @@ The puzzle is assumed to be a 9x9 grid (a list of nine lists, each of which cont
 square is represented by 0 and a non-empty one by the number (in the range
 1 to 9 inclusive) it contains.
 
-The `sudoku` function validates the input grid to ensure it is solvable: this is
-always true unless any row, column or box contains duplicate values. If it is not solvable,
-an error message is issued, otherwise the first solution found is returned.
+The `sudoku` function returns an error message if no solution can be found, otherwise the first solution found is returned. For an example of an unsolvable puzzle, try entering `sudoku $ setValueAt (8,8) 3 puzzle` - the only possible solution 
+has 2 in the bottom right-hand corner, so setting that square to any other non-zero value makes the puzzle unsolvable.
 
 The program uses a straightforward, brute-force algorithm to solve the puzzle.
 For any given grid:

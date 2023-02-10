@@ -21,19 +21,9 @@ puzzle = [[8,0,0,0,0,0,0,0,0],
           [0,9,0,0,0,0,4,0,0]]
 
 sudoku :: Grid -> Either String Grid
-sudoku grid = if invalid grid then Left "Not solvable" else Right $ head $ solve grid
-
-containsDuplicates :: [Int] -> Bool
-containsDuplicates xs = length xs /= length (nub xs)
-
-invalid :: Grid -> Bool
-invalid grid = rowsWithDuplicates || colsWithDuplicates || boxesWithDuplicates
-  where
-    rowsWithDuplicates = any (containsDuplicates . (`rowValues` grid)) indices
-    colsWithDuplicates = any (containsDuplicates . (`colValues` grid)) indices
-    boxesWithDuplicates = any (containsDuplicates . (`boxValues` grid)) coords
-    indices = take (length grid) [0..]
-    coords = [(r, c) | r <- indices, c <- indices]
+sudoku grid = case solve grid of
+  [] -> Left "Not solvable"
+  (s:_) -> Right s
 
 solve :: Grid -> [Grid]
 solve grid = case emptyCells grid of
