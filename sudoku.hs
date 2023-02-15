@@ -24,15 +24,41 @@ puzzle = [[8,0,0,0,0,0,0,0,0],
           [0,9,0,0,0,0,4,0,0]]
 
 sudoku :: Grid -> Either String Grid
-sudoku grid = if invalid grid then Left "Invalid grid" 
-  else case solve grid of
-    [] -> Left "Not solvable"
-    (s:_) -> Right s
+sudoku grid = solveIt =<< validate grid
+  where
+    solveIt grid = case solve grid of
+      [] -> Left "Not solvable"
+      (s:_) -> Right s
+
+validate :: Grid -> Either String Grid
+validate grid
+  | length grid /= gridSize = Left "Wrong number of rows"
+  | any ((/= gridSize) . length) grid = Left "Wrong number of columns"
+  | any (any (`notElem` emptySquare : permittedValues)) grid = Left "Invalid cell value"
+  | any (hasDuplicates . (`rowValues` grid)) indices = Left "Row contains duplicate value(s)"
+  | any (hasDuplicates . (`colValues` grid)) indices = Left "Column contains duplicate value(s)"
+  | any (hasDuplicates . (`boxValues` grid)) boxTopCorners = Left "Box contains duplicate value(s)"
+  | otherwise = Right grid
+  where
+    gridSize = length permittedValues
+    hasDuplicates xs = length xs /= length (nub xs)
+    indices = take gridSize [0..]
+    (rowsPerBox, colsPerBox) = boxSize grid
+    boxStartRows = filter ((==0).(`mod` rowsPerBox)) indices
+    boxStartCols = filter ((==0).(`mod` colsPerBox)) indices
+    boxTopCorners = [(r, c) | r <- boxStartRows, c <- boxStartCols]
 
 invalid :: Grid -> Bool
-invalid grid = length grid /= length permittedValues ||
-  any ((/= length permittedValues) . length) grid ||
-  any (any (`notElem` emptySquare : permittedValues)) grid
+invalid grid = length grid /= gridSize ||
+  any ((/= gridSize) . length) grid ||
+  any (any (`notElem` emptySquare : permittedValues)) grid ||
+  any (hasDuplicates . (`rowValues` grid)) indices ||
+  any (hasDuplicates . (`colValues` grid)) indices ||
+  any (hasDuplicates . (`boxValues` grid)) [(r, c) | r <- indices, c <- indices]
+  where
+    gridSize = length permittedValues
+    hasDuplicates xs = length xs /= length (nub xs)
+    indices = take gridSize [0..]
 
 solve :: Grid -> [Grid]
 solve grid = case emptyCells grid of
@@ -63,7 +89,7 @@ replaceValueAt index value xs = case splitAt index xs of
 allowedValues :: Coords -> Grid -> [Int]
 allowedValues square@(row, col) grid = permittedValues \\ blockedValues
   where
-    blockedValues = concatMap ($ grid) 
+    blockedValues = concatMap ($ grid)
       [rowValues row, colValues col, boxValues square]
 
 rowValues :: Int -> Grid -> [Int]
@@ -83,7 +109,7 @@ boxValues (row, col) grid = filter (/=emptySquare) values
 
 boxSize :: Grid -> (Int, Int)
 boxSize grid = cache !! length grid
-  where 
+  where
     cache = map boxSize' [0..]
     boxSize' :: Int -> (Int, Int)
     boxSize' 0 = (0,0)
