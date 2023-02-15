@@ -26,7 +26,7 @@ To see examples of the various error conditions and their associated messages, t
 * `sudoku $ setValueAt (8,0) 1 puzzle` for the case where a box contains duplicate values.
 * `sudoku $ setValueAt (8,8) 3 puzzle` for the case where the puzzle is unsolvable - the only possible solution 
 has 2 in the bottom right-hand corner, so setting that square to 3, 5 or 7 (the values other
-than 2 which are not duplicated in the same row, column or box) makes the puzzle unsolvable though still valid.
+than 2 which are not duplicated in the same row, column or box) makes the puzzle unsolvable though still apparently valid.
 
 The program uses a straightforward algorithm which tries every possibility to solve the puzzle.
 For any given grid:
