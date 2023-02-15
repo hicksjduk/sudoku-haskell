@@ -8,11 +8,7 @@ type Coords = (Int, Int)
 permittedValues = [1..9]
 emptySquare = 0
 
-display :: Grid -> String
-display grid = unlines $ map (unwords . map show) grid
-
 puzzle :: Grid
-
 puzzle = [[8,0,0,0,0,0,0,0,0],
           [0,0,3,6,0,0,0,0,0],
           [0,7,0,0,9,0,2,0,0],
@@ -47,18 +43,6 @@ validate grid
     boxStartRows = filter ((==0).(`mod` rowsPerBox)) indices
     boxStartCols = filter ((==0).(`mod` colsPerBox)) indices
     boxTopCorners = [(r, c) | r <- boxStartRows, c <- boxStartCols]
-
-invalid :: Grid -> Bool
-invalid grid = length grid /= gridSize ||
-  any ((/= gridSize) . length) grid ||
-  any (any (`notElem` emptySquare : permittedValues)) grid ||
-  any (hasDuplicates . (`rowValues` grid)) indices ||
-  any (hasDuplicates . (`colValues` grid)) indices ||
-  any (hasDuplicates . (`boxValues` grid)) [(r, c) | r <- indices, c <- indices]
-  where
-    gridSize = length permittedValues
-    hasDuplicates xs = length xs /= length (nub xs)
-    indices = take gridSize [0..]
 
 solve :: Grid -> [Grid]
 solve grid = case emptyCells grid of
