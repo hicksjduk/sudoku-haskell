@@ -40,9 +40,9 @@ validate grid
     hasDuplicates xs = length xs /= length (nub xs)
     indices = take gridSize [0..]
     (rowsPerBox, colsPerBox) = boxSize grid
-    boxStarts boxCount perBox = take boxCount $ iterate (+perBox) 0
-    boxStartRows = boxStarts colsPerBox rowsPerBox
-    boxStartCols = boxStarts rowsPerBox colsPerBox
+    boxStarts perBox = takeWhile (< gridSize) $ iterate (+perBox) 0
+    boxStartRows = boxStarts rowsPerBox
+    boxStartCols = boxStarts colsPerBox
     boxTopCorners = [(r, c) | r <- boxStartRows, c <- boxStartCols]
 
 solve :: Grid -> [Grid]
