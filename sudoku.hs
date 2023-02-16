@@ -53,11 +53,11 @@ boxContaining :: Coords -> BoxCoords
 boxContaining square = fromJust $ find (isInBox square) boxes
 
 valuesInBox :: BoxCoords -> Grid -> [Int]
-valuesInBox ((topRow, topCol), (bottomRow, bottomCol)) grid = filter (/= emptySquare) values
+valuesInBox ((topRow, leftCol), (bottomRow, rightCol)) grid = filter (/= emptySquare) values
   where
     boxSection top bottom xs = take (bottom - top + 1) $ drop top xs
     boxRows = boxSection topRow bottomRow grid
-    values = concatMap (boxSection topCol bottomCol) boxRows
+    values = concatMap (boxSection leftCol rightCol) boxRows
 
 puzzle :: Grid
 puzzle = [[8,0,0,0,0,0,0,0,0],
