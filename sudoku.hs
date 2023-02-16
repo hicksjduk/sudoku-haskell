@@ -108,11 +108,13 @@ solveAt square grid = concatMap solveUsing $ allowedValues square grid
 
 setValueAt :: Coords -> a -> [[a]] -> [[a]]
 setValueAt (row, col) value grid = replaceValueAt row newRow grid
-  where newRow = replaceValueAt col value (grid !! row)
+  where 
+    newRow = replaceValueAt col value (grid !! row)
 
 replaceValueAt :: Int -> a -> [a] -> [a]
-replaceValueAt index value xs = case splitAt index xs of
-  (before, _:after) -> before ++ value : after
+replaceValueAt index value xs = before ++ value : after
+  where 
+    (before, _:after) = splitAt index xs
 
 allowedValues :: Coords -> Grid -> [Int]
 allowedValues square@(row, col) grid = permittedValues \\ blockedValues
