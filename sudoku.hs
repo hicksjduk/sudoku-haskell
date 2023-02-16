@@ -23,7 +23,7 @@ sudoku :: Grid -> Either String Grid
 sudoku grid = solveIt =<< validate grid
   where
     solveIt grid = case solve grid of
-      [] -> Left "Not solvable"
+      [] -> Left "No solution found"
       (s:_) -> Right s
 
 validate :: Grid -> Either String Grid
@@ -40,8 +40,9 @@ validate grid
     hasDuplicates xs = length xs /= length (nub xs)
     indices = take gridSize [0..]
     (rowsPerBox, colsPerBox) = boxSize grid
-    boxStartRows = filter ((==0).(`mod` rowsPerBox)) indices
-    boxStartCols = filter ((==0).(`mod` colsPerBox)) indices
+    boxStarts boxCount perBox = take boxCount $ iterate (+perBox) 0
+    boxStartRows = boxStarts colsPerBox rowsPerBox
+    boxStartCols = boxStarts rowsPerBox colsPerBox
     boxTopCorners = [(r, c) | r <- boxStartRows, c <- boxStartCols]
 
 solve :: Grid -> [Grid]
