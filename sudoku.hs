@@ -1,12 +1,63 @@
 module Sudoku where
 
 import Data.List
+import Data.Maybe (fromJust)
 
 type Grid = [[Int]]
 type Coords = (Int, Int)
+type BoxCoords = (Coords, Coords)
 
 permittedValues = [1..9]
 emptySquare = 0
+
+gridSize = length permittedValues
+
+{-
+Calculation of the box size assumes that the boxes follow the convention
+that:
+ - Each box is as nearly square as possible - that is, the number of rows
+   and the number of columns in each box differ by the smallest possible
+   amount.
+ - If the box is not square (because the grid size is not a square number),
+   it has more columns than rows.
+This implies that the number of columns in a box is the smallest divisor
+of the grid size that is not less than its square root, and the number of 
+rows in a box is the grid size divided by the number of columns.
+-}
+boxSize = (rows, cols)
+  where
+    x `isDivisorOf` y = y `mod` x == 0
+    squareRoot = sqrt $ fromIntegral gridSize
+    rows = gridSize `div` cols
+    cols = head $ filter (`isDivisorOf` gridSize) [ceiling squareRoot..]
+
+boxes :: [BoxCoords]
+boxes = map boxExtent boxTopCorners
+  where
+    (rowsPerBox, colsPerBox) = boxSize
+    boxStarts perBox = takeWhile (< gridSize) $ iterate (+ perBox) 0
+    boxStartRows = boxStarts rowsPerBox
+    boxStartCols = boxStarts colsPerBox
+    boxTopCorners = [(r, c) | r <- boxStartRows, c <- boxStartCols]
+    boxExtent topLeft@(topRow, leftCol) = (topLeft, bottomRight)
+      where
+        bottomRight = (topRow + rowsPerBox - 1, leftCol + colsPerBox - 1)
+
+isInBox :: Coords -> BoxCoords -> Bool
+isInBox (row, col) ((topRow, leftCol), (bottomRow, rightCol)) =
+  inRange topRow bottomRow row && inRange leftCol rightCol col
+  where
+    inRange min max n = n >= min && n <= max
+
+boxContaining :: Coords -> BoxCoords
+boxContaining square = fromJust $ find (isInBox square) boxes
+
+valuesInBox :: BoxCoords -> Grid -> [Int]
+valuesInBox ((topRow, topCol), (bottomRow, bottomCol)) grid = filter (/= emptySquare) values
+  where
+    boxSection top bottom xs = take (bottom - top + 1) $ drop top xs
+    boxRows = boxSection topRow bottomRow grid
+    values = concatMap (boxSection topCol bottomCol) boxRows
 
 puzzle :: Grid
 puzzle = [[8,0,0,0,0,0,0,0,0],
@@ -24,7 +75,7 @@ sudoku grid = solveIt =<< validate grid
   where
     solveIt grid = case solve grid of
       [] -> Left "No solution found"
-      (solution : _) -> Right solution
+      (solution:_) -> Right solution
 
 validate :: Grid -> Either String Grid
 validate grid
@@ -33,22 +84,16 @@ validate grid
   | any (any (`notElem` emptySquare : permittedValues)) grid = Left "Invalid cell value"
   | any (hasDuplicates . (`rowValues` grid)) indices = Left "Row contains duplicate value(s)"
   | any (hasDuplicates . (`colValues` grid)) indices = Left "Column contains duplicate value(s)"
-  | any (hasDuplicates . (`boxValues` grid)) boxTopCorners = Left "Box contains duplicate value(s)"
+  | any (hasDuplicates . (`valuesInBox` grid)) boxes = Left "Box contains duplicate value(s)"
   | otherwise = Right grid
   where
-    gridSize = length permittedValues
     hasDuplicates xs = length xs /= length (nub xs)
     indices = take gridSize [0..]
-    (rowsPerBox, colsPerBox) = boxSize grid
-    boxStarts perBox = takeWhile (< gridSize) $ iterate (+ perBox) 0
-    boxStartRows = boxStarts rowsPerBox
-    boxStartCols = boxStarts colsPerBox
-    boxTopCorners = [(r, c) | r <- boxStartRows, c <- boxStartCols]
 
 solve :: Grid -> [Grid]
 solve grid = case emptyCells grid of
   [] -> [grid]
-  (square : _) -> solveAt square grid
+  (square:_) -> solveAt square grid
 
 emptyCells :: Grid -> [Coords]
 emptyCells grid = concatMap coords colsByRow
@@ -84,24 +129,4 @@ colValues :: Int -> Grid -> [Int]
 colValues col grid = filter (/= emptySquare) $ map (!! col) grid
 
 boxValues :: Coords -> Grid -> [Int]
-boxValues (row, col) grid = filter (/= emptySquare) values
-  where
-    (rowsPerBox, colsPerBox) = boxSize grid
-    boxStart i perBox = (i `div` perBox) * perBox
-    boxSection i perBox xs = take perBox $ drop (boxStart i perBox) xs
-    boxRows = boxSection row rowsPerBox grid
-    values = concatMap (boxSection col colsPerBox) boxRows
-
-boxSize :: Grid -> (Int, Int)
-boxSize grid = cache !! length grid
-  where
-    cache = map boxSize' [0..]
-    boxSize' :: Int -> (Int, Int)
-    boxSize' 0 = (0,0)
-    boxSize' n = (rows, cols)
-      where
-        isDivisorOf :: Int -> Int -> Bool
-        x `isDivisorOf` y = y `mod` x == 0
-        squareRoot = sqrt $ fromIntegral n
-        rows = n `div` cols
-        cols = head $ filter (`isDivisorOf` n) [ceiling squareRoot..]
+boxValues square = valuesInBox (boxContaining square)
