@@ -11,7 +11,7 @@ The input puzzle is validated to ensure that:
 * it is a 9x9 grid (a list of nine lists, each of which contains nine `Int`s).
 * every square is either empty (represented by the value 0) or contains one
 of the values 1 to 9 inclusive.
-* no row, column and box contains duplicate values in its non-empty
+* no row, column or box contains duplicate values in its non-empty
 squares.
 
 The `sudoku` function returns an error message if 
