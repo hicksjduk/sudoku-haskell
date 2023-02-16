@@ -50,11 +50,7 @@ isInBox (row, col) ((topRow, leftCol), (bottomRow, rightCol)) =
     inRange min max n = n >= min && n <= max
 
 boxContaining :: Coords -> BoxCoords
-boxContaining (row, col) = cache !! row !! col
-  where 
-    cache = map cacheRow [0..]
-    cacheRow r = map (boxContaining' r) [0..]
-    boxContaining' row col = fromJust $ find (isInBox (row, col)) boxes
+boxContaining (row, col) = fromJust $ find (isInBox (row, col)) boxes
 
 valuesInBox :: BoxCoords -> Grid -> [Int]
 valuesInBox ((topRow, leftCol), (bottomRow, rightCol)) grid = filter (/= emptySquare) values
