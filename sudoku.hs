@@ -112,8 +112,6 @@ setValueAt (row, col) value grid = replaceValueAt row newRow grid
 
 replaceValueAt :: Int -> a -> [a] -> [a]
 replaceValueAt index value xs = case splitAt index xs of
-  (_, []) -> xs
-  ([], _:after) -> if index < 0 then xs else value : after
   (before, _:after) -> before ++ value : after
 
 allowedValues :: Coords -> Grid -> [Int]
