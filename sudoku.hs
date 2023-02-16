@@ -24,7 +24,7 @@ sudoku grid = solveIt =<< validate grid
   where
     solveIt grid = case solve grid of
       [] -> Left "No solution found"
-      (s:_) -> Right s
+      (solution : _) -> Right solution
 
 validate :: Grid -> Either String Grid
 validate grid
@@ -40,7 +40,7 @@ validate grid
     hasDuplicates xs = length xs /= length (nub xs)
     indices = take gridSize [0..]
     (rowsPerBox, colsPerBox) = boxSize grid
-    boxStarts perBox = takeWhile (< gridSize) $ iterate (+perBox) 0
+    boxStarts perBox = takeWhile (< gridSize) $ iterate (+ perBox) 0
     boxStartRows = boxStarts rowsPerBox
     boxStartCols = boxStarts colsPerBox
     boxTopCorners = [(r, c) | r <- boxStartRows, c <- boxStartCols]
@@ -48,7 +48,7 @@ validate grid
 solve :: Grid -> [Grid]
 solve grid = case emptyCells grid of
   [] -> [grid]
-  (square:_) -> solveAt square grid
+  (square : _) -> solveAt square grid
 
 emptyCells :: Grid -> [Coords]
 emptyCells grid = concatMap coords colsByRow
@@ -78,13 +78,13 @@ allowedValues square@(row, col) grid = permittedValues \\ blockedValues
       [rowValues row, colValues col, boxValues square]
 
 rowValues :: Int -> Grid -> [Int]
-rowValues row grid = filter (/=emptySquare) $ grid !! row
+rowValues row grid = filter (/= emptySquare) $ grid !! row
 
 colValues :: Int -> Grid -> [Int]
-colValues col grid = filter (/=emptySquare) $ map (!! col) grid
+colValues col grid = filter (/= emptySquare) $ map (!! col) grid
 
 boxValues :: Coords -> Grid -> [Int]
-boxValues (row, col) grid = filter (/=emptySquare) values
+boxValues (row, col) grid = filter (/= emptySquare) values
   where
     (rowsPerBox, colsPerBox) = boxSize grid
     boxStart i perBox = (i `div` perBox) * perBox
