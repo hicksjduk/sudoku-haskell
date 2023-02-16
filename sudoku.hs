@@ -53,7 +53,7 @@ solve grid = case emptyCells grid of
 emptyCells :: Grid -> [Coords]
 emptyCells grid = concatMap coords colsByRow
   where
-    coords (row, cols) = zip (repeat row) cols
+    coords (row, cols) = map (row,) cols
     colsByRow = zip [0..] $ map (elemIndices emptySquare) grid
 
 solveAt :: Coords -> Grid -> [Grid]
