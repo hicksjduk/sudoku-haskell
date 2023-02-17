@@ -6,6 +6,17 @@ type Grid = [[Int]]
 type Square = (Int, Int)
 type Box = (Square, Square)
 
+{-
+None of the code below makes any assumption about the size of the grid or
+the permitted values in it. Everything is driven by the two assignments
+that follow this comment. So (for example) to work with puzzles that have
+six rows and columns, you could assign a list of six numbers to
+permittedValues. The only (sensible) constraints on this are that:
+ - permittedValues should not be empty (which would make the solver crash).
+ - the length of permittedValues should preferably not be a prime number
+   (it would work, but each box would be contiguous with a row).
+ - emptySquare should not be set to a value that is in permittedValues.
+-}
 permittedValues = [1..9]
 emptySquare = 0
 
