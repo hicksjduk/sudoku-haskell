@@ -44,13 +44,13 @@ boxes = map boxExtent boxTopCorners
         bottomRight = (topRow + rowsPerBox - 1, leftCol + colsPerBox - 1)
 
 isInBox :: Coords -> BoxCoords -> Bool
-isInBox (row, col) ((topRow, leftCol), (bottomRow, rightCol)) =
+(row, col) `isInBox` ((topRow, leftCol), (bottomRow, rightCol)) =
   inRange topRow bottomRow row && inRange leftCol rightCol col
   where
     inRange min max n = n >= min && n <= max
 
 boxContaining :: Coords -> BoxCoords
-boxContaining (row, col) = head $ filter (isInBox (row, col)) boxes
+boxContaining square = head $ filter (square `isInBox`) boxes
 
 valuesInBox :: BoxCoords -> Grid -> [Int]
 valuesInBox ((topRow, leftCol), (bottomRow, rightCol)) grid = 
@@ -113,7 +113,7 @@ solveAt square grid = concatMap solveUsing $ allowedValues square grid
   where
     solveUsing value = solve $ setValueAt square value grid
 
-setValueAt :: Coords -> a -> [[a]] -> [[a]]
+setValueAt :: Coords -> Int -> Grid -> Grid
 setValueAt (row, col) value grid = replaceValueAt row newRow grid
   where 
     newRow = replaceValueAt col value (grid !! row)
