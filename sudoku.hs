@@ -4,8 +4,8 @@ import Data.List
 import Data.Maybe (fromJust)
 
 type Grid = [[Int]]
-type Coords = (Int, Int)
-type BoxCoords = (Coords, Coords)
+type Square = (Int, Int)
+type Box = (Square, Square)
 
 permittedValues = [1..9]
 emptySquare = 0
@@ -31,7 +31,7 @@ boxSize = (rows, cols)
     rows = gridSize `div` cols
     cols = head $ filter (`isDivisorOf` gridSize) [ceiling squareRoot..]
 
-boxes :: [BoxCoords]
+boxes :: [Box]
 boxes = map boxExtent boxTopCorners
   where
     (rowsPerBox, colsPerBox) = boxSize
@@ -43,16 +43,16 @@ boxes = map boxExtent boxTopCorners
       where
         bottomRight = (topRow + rowsPerBox - 1, leftCol + colsPerBox - 1)
 
-isInBox :: Coords -> BoxCoords -> Bool
+isInBox :: Square -> Box -> Bool
 (row, col) `isInBox` ((topRow, leftCol), (bottomRow, rightCol)) =
   inRange topRow bottomRow row && inRange leftCol rightCol col
   where
     inRange min max n = n >= min && n <= max
 
-boxContaining :: Coords -> BoxCoords
+boxContaining :: Square -> Box
 boxContaining square = head $ filter (square `isInBox`) boxes
 
-valuesInBox :: BoxCoords -> Grid -> [Int]
+valuesInBox :: Box -> Grid -> [Int]
 valuesInBox ((topRow, leftCol), (bottomRow, rightCol)) grid = 
   filter (/= emptySquare) values
   where
@@ -102,18 +102,18 @@ solve grid = case emptyCells grid of
   [] -> [grid]
   (square:_) -> solveAt square grid
 
-emptyCells :: Grid -> [Coords]
-emptyCells grid = concatMap coords colsByRow
+emptyCells :: Grid -> [Square]
+emptyCells grid = concatMap squares colsByRow
   where
-    coords (row, cols) = map (row,) cols
+    squares (row, cols) = map (row,) cols
     colsByRow = zip [0..] $ map (elemIndices emptySquare) grid
 
-solveAt :: Coords -> Grid -> [Grid]
+solveAt :: Square -> Grid -> [Grid]
 solveAt square grid = concatMap solveUsing $ allowedValues square grid
   where
     solveUsing value = solve $ setValueAt square value grid
 
-setValueAt :: Coords -> Int -> Grid -> Grid
+setValueAt :: Square -> Int -> Grid -> Grid
 setValueAt (row, col) value grid = replaceValueAt row newRow grid
   where 
     newRow = replaceValueAt col value (grid !! row)
@@ -123,7 +123,7 @@ replaceValueAt index value xs = before ++ value : after
   where 
     (before, _:after) = splitAt index xs
 
-allowedValues :: Coords -> Grid -> [Int]
+allowedValues :: Square -> Grid -> [Int]
 allowedValues square@(row, col) grid = permittedValues \\ blockedValues
   where
     blockedValues = concatMap ($ grid)
@@ -135,5 +135,5 @@ rowValues row grid = filter (/= emptySquare) $ grid !! row
 colValues :: Int -> Grid -> [Int]
 colValues col grid = filter (/= emptySquare) $ map (!! col) grid
 
-boxValues :: Coords -> Grid -> [Int]
+boxValues :: Square -> Grid -> [Int]
 boxValues square = valuesInBox (boxContaining square)
