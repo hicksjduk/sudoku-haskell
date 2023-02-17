@@ -50,10 +50,11 @@ isInBox (row, col) ((topRow, leftCol), (bottomRow, rightCol)) =
     inRange min max n = n >= min && n <= max
 
 boxContaining :: Coords -> BoxCoords
-boxContaining (row, col) = fromJust $ find (isInBox (row, col)) boxes
+boxContaining (row, col) = head $ filter (isInBox (row, col)) boxes
 
 valuesInBox :: BoxCoords -> Grid -> [Int]
-valuesInBox ((topRow, leftCol), (bottomRow, rightCol)) grid = filter (/= emptySquare) values
+valuesInBox ((topRow, leftCol), (bottomRow, rightCol)) grid = 
+  filter (/= emptySquare) values
   where
     boxSection top bottom xs = take (bottom - top + 1) $ drop top xs
     boxRows = boxSection topRow bottomRow grid
@@ -79,12 +80,18 @@ sudoku grid = solveIt =<< validate grid
 
 validate :: Grid -> Either String Grid
 validate grid
-  | length grid /= gridSize = Left "Wrong number of rows"
-  | any ((/= gridSize) . length) grid = Left "Wrong number of columns"
-  | any (any (`notElem` emptySquare : permittedValues)) grid = Left "Invalid cell value"
-  | any (hasDuplicates . (`rowValues` grid)) indices = Left "Row contains duplicate value(s)"
-  | any (hasDuplicates . (`colValues` grid)) indices = Left "Column contains duplicate value(s)"
-  | any (hasDuplicates . (`valuesInBox` grid)) boxes = Left "Box contains duplicate value(s)"
+  | length grid /= gridSize = 
+    Left "Wrong number of rows"
+  | any ((/= gridSize) . length) grid = 
+    Left "Wrong number of columns"
+  | any (any (`notElem` emptySquare : permittedValues)) grid = 
+    Left "Invalid cell value"
+  | any (hasDuplicates . (`rowValues` grid)) indices = 
+    Left "Row contains duplicate value(s)"
+  | any (hasDuplicates . (`colValues` grid)) indices = 
+    Left "Column contains duplicate value(s)"
+  | any (hasDuplicates . (`valuesInBox` grid)) boxes = 
+    Left "Box contains duplicate value(s)"
   | otherwise = Right grid
   where
     hasDuplicates xs = length xs /= length (nub xs)
