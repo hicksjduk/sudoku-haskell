@@ -1,7 +1,6 @@
 module Sudoku where
 
 import Data.List
-import Data.Maybe (fromJust)
 
 type Grid = [[Int]]
 type Square = (Int, Int)
