@@ -17,6 +17,7 @@ permittedValues. The only (sensible) constraints on this (which make
 the solver fail with an error if violated) are that:
  - permittedValues should not be empty.
  - the length of permittedValues should not be a prime number.
+ - permittedValues should not contain any duplicates.
  - emptySquare should not be set to a value that is in permittedValues.
 -}
 permittedValues :: [Int]
@@ -83,6 +84,8 @@ validate grid
     Left "Grid size is 0"
   | boxSize == (1, gridSize) =
     Left "Grid size is a prime number"
+  | hasDuplicates permittedValues =
+    Left "Permitted values include duplicate(s)"
   | emptySquare `elem` permittedValues =
     Left "Empty square value is also a permitted value"
   | length grid /= gridSize = 
