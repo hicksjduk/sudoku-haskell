@@ -17,9 +17,12 @@ the solver fail with an error if violated) are that:
  - the length of permittedValues should not be a prime number.
  - emptySquare should not be set to a value that is in permittedValues.
 -}
+permittedValues :: [Int]
 permittedValues = [1..9]
+emptySquare :: Int 
 emptySquare = 0
 
+gridSize :: Int
 gridSize = length permittedValues
 
 {-
@@ -34,6 +37,7 @@ This implies that the number of columns in a box is the smallest divisor
 of the grid size that is not less than its square root, and the number of 
 rows in a box is the grid size divided by the number of columns.
 -}
+boxSize :: (Int, Int)
 boxSize = if gridSize == 0 then (0, 0) else (rows, cols)
   where
     x `isDivisorOf` y = y `mod` x == 0
@@ -52,23 +56,6 @@ boxes = map boxExtent boxTopCorners
     boxExtent topLeft@(topRow, leftCol) = (topLeft, bottomRight)
       where
         bottomRight = (topRow + rowsPerBox - 1, leftCol + colsPerBox - 1)
-
-isInBox :: Square -> Box -> Bool
-(row, col) `isInBox` ((topRow, leftCol), (bottomRow, rightCol)) =
-  inRange topRow bottomRow row && inRange leftCol rightCol col
-  where
-    inRange min max n = n >= min && n <= max
-
-boxContaining :: Square -> Box
-boxContaining square = head $ filter (square `isInBox`) boxes
-
-valuesInBox :: Box -> Grid -> [Int]
-valuesInBox ((topRow, leftCol), (bottomRow, rightCol)) grid = 
-  filter (/= emptySquare) values
-  where
-    boxSection top bottom xs = take (bottom - top + 1) $ drop top xs
-    boxRows = boxSection topRow bottomRow grid
-    values = concatMap (boxSection leftCol rightCol) boxRows
 
 puzzle :: Grid
 puzzle = [[8,0,0,0,0,0,0,0,0],
@@ -106,7 +93,7 @@ validate grid
     Left "Row contains duplicate value(s)"
   | any (hasDuplicates . (`colValues` grid)) indices = 
     Left "Column contains duplicate value(s)"
-  | any (hasDuplicates . (`valuesInBox` grid)) boxes = 
+  | any (hasDuplicates . (`boxValues` grid)) boxes = 
     Left "Box contains duplicate value(s)"
   | otherwise = Right grid
   where
@@ -119,10 +106,9 @@ solve grid = case emptyCells grid of
   (square:_) -> solveAt square grid
 
 emptyCells :: Grid -> [Square]
-emptyCells grid = concatMap squares colsByRow
+emptyCells grid = concat $ zipWith squares [0..] $ map (elemIndices emptySquare) grid
   where
-    squares (row, cols) = map (row,) cols
-    colsByRow = zip [0..] $ map (elemIndices emptySquare) grid
+    squares row = map (row,)
 
 solveAt :: Square -> Grid -> [Grid]
 solveAt square grid = concatMap solveUsing $ allowedValues square grid
@@ -143,7 +129,7 @@ allowedValues :: Square -> Grid -> [Int]
 allowedValues square@(row, col) grid = permittedValues \\ blockedValues
   where
     blockedValues = concatMap ($ grid)
-      [rowValues row, colValues col, boxValues square]
+      [rowValues row, colValues col, boxValues (boxContaining square)]
 
 rowValues :: Int -> Grid -> [Int]
 rowValues row grid = filter (/= emptySquare) $ grid !! row
@@ -151,5 +137,19 @@ rowValues row grid = filter (/= emptySquare) $ grid !! row
 colValues :: Int -> Grid -> [Int]
 colValues col grid = filter (/= emptySquare) $ map (!! col) grid
 
-boxValues :: Square -> Grid -> [Int]
-boxValues square = valuesInBox (boxContaining square)
+isInBox :: Square -> Box -> Bool
+(row, col) `isInBox` ((topRow, leftCol), (bottomRow, rightCol)) =
+  inRange topRow bottomRow row && inRange leftCol rightCol col
+  where
+    inRange min max n = n >= min && n <= max
+
+boxContaining :: Square -> Box
+boxContaining square = head $ filter (square `isInBox`) boxes
+
+boxValues :: Box -> Grid -> [Int]
+boxValues ((topRow, leftCol), (bottomRow, rightCol)) grid = 
+  filter (/= emptySquare) values
+  where
+    boxSection top bottom xs = take (bottom - top + 1) $ drop top xs
+    boxRows = boxSection topRow bottomRow grid
+    values = concatMap (boxSection leftCol rightCol) boxRows
