@@ -155,6 +155,6 @@ boxValues :: Box -> Grid -> [Int]
 boxValues ((topRow, leftCol), (bottomRow, rightCol)) grid = 
   filter (/= emptySquare) values
   where
-    boxSection top bottom xs = take (bottom - top + 1) $ drop top xs
+    boxSection first last xs = take (last - first + 1) $ drop first xs
     boxRows = boxSection topRow bottomRow grid
     values = concatMap (boxSection leftCol rightCol) boxRows
