@@ -3,7 +3,9 @@ module Sudoku where
 import Data.List
 
 type Grid = [[Int]]
+-- A square is represented by the indices of its row and column.
 type Square = (Int, Int)
+-- A box is represented by its top left and bottom right squares.
 type Box = (Square, Square)
 
 {-
