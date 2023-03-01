@@ -52,7 +52,7 @@ boxes :: [Box]
 boxes = map boxExtent boxTopCorners
   where
     (rowsPerBox, colsPerBox) = boxSize
-    boxStarts perBox = takeWhile (< gridSize) $ iterate (+ perBox) 0
+    boxStarts perBox = [0, perBox .. gridSize - 1]
     boxStartRows = boxStarts rowsPerBox
     boxStartCols = boxStarts colsPerBox
     boxTopCorners = [(r, c) | r <- boxStartRows, c <- boxStartCols]
