@@ -5,21 +5,10 @@ import Data.List
 type Grid = [[Int]]
 -- A square is represented by the indices of its row and column.
 type Square = (Int, Int)
--- A box is represented by its top left and bottom right squares.
-type Box = (Square, Square)
+-- A box is represented by the ranges of its row and column indices.
+type IntRange = (Int, Int)
+type Box = (IntRange, IntRange)
 
-{-
-None of the code below makes any assumption about the size of the grid or
-the permitted values in it. Everything is driven by the two assignments
-that follow this comment. So (for example) to work with puzzles that have
-six rows and columns, you could assign a list of six numbers to
-permittedValues. The only (sensible) constraints on this (which make
-the solver fail with an error if violated) are that:
- - permittedValues should not be empty.
- - the length of permittedValues should not be a prime number.
- - permittedValues should not contain any duplicates.
- - emptySquare should not be set to a value that is in permittedValues.
--}
 permittedValues :: [Int]
 permittedValues = [1..9]
 emptySquare :: Int 
@@ -28,18 +17,6 @@ emptySquare = 0
 gridSize :: Int
 gridSize = length permittedValues
 
-{-
-Calculation of the box size assumes that the boxes follow the convention
-that:
- - Each box is as nearly square as possible - that is, the number of rows
-   and the number of columns in each box differ by the smallest possible
-   amount.
- - If the box is not square (because the grid size is not a square number),
-   it has more columns than rows.
-This implies that the number of columns in a box is the smallest divisor
-of the grid size that is not less than its square root, and the number of 
-rows in a box is the grid size divided by the number of columns.
--}
 boxSize :: (Int, Int)
 boxSize = if gridSize == 0 then (0, 0) else (rows, cols)
   where
@@ -49,16 +26,13 @@ boxSize = if gridSize == 0 then (0, 0) else (rows, cols)
     cols = head $ filter (`isDivisorOf` gridSize) [ceiling squareRoot..]
 
 boxes :: [Box]
-boxes = map boxExtent boxTopCorners
+boxes = (,) <$> rowRanges <*> colRanges
   where
     (rowsPerBox, colsPerBox) = boxSize
-    boxStarts perBox = [0, perBox .. gridSize - 1]
-    boxStartRows = boxStarts rowsPerBox
-    boxStartCols = boxStarts colsPerBox
-    boxTopCorners = [(r, c) | r <- boxStartRows, c <- boxStartCols]
-    boxExtent topLeft@(topRow, leftCol) = (topLeft, bottomRight)
-      where
-        bottomRight = (topRow + rowsPerBox - 1, leftCol + colsPerBox - 1)
+    ranges perBox = map (rangeFrom perBox) [0, perBox .. gridSize - 1]
+    rangeFrom size x = (x, x + size - 1)
+    rowRanges = ranges rowsPerBox
+    colRanges = ranges colsPerBox
 
 puzzle :: Grid
 puzzle = [[8,0,0,0,0,0,0,0,0],
@@ -82,8 +56,6 @@ validate :: Grid -> Either String Grid
 validate grid
   | gridSize == 0 =
     Left "Grid size is 0"
-  | boxSize == (1, gridSize) =
-    Left "Grid size is a prime number"
   | hasDuplicates permittedValues =
     Left "Permitted values include duplicate(s)"
   | emptySquare `elem` permittedValues =
@@ -134,7 +106,7 @@ allowedValues :: Square -> Grid -> [Int]
 allowedValues square@(row, col) grid = permittedValues \\ blockedValues
   where
     blockedValues = concatMap ($ grid)
-      [rowValues row, colValues col, boxValues (boxContaining square)]
+      [rowValues row, colValues col, boxValues $ boxContaining square]
 
 rowValues :: Int -> Grid -> [Int]
 rowValues row grid = filter (/= emptySquare) $ grid !! row
@@ -143,18 +115,18 @@ colValues :: Int -> Grid -> [Int]
 colValues col grid = filter (/= emptySquare) $ map (!! col) grid
 
 isInBox :: Square -> Box -> Bool
-(row, col) `isInBox` ((topRow, leftCol), (bottomRow, rightCol)) =
-  inRange topRow bottomRow row && inRange leftCol rightCol col
+(row, col) `isInBox` (rows, cols) =
+  inRange row rows && inRange col cols
   where
-    inRange min max n = n >= min && n <= max
+    inRange n (min, max) = n >= min && n <= max
 
 boxContaining :: Square -> Box
 boxContaining square = head $ filter (square `isInBox`) boxes
 
 boxValues :: Box -> Grid -> [Int]
-boxValues ((topRow, leftCol), (bottomRow, rightCol)) grid = 
+boxValues (rows, cols) grid = 
   filter (/= emptySquare) values
   where
-    boxSection first last xs = take (last - first + 1) $ drop first xs
-    boxRows = boxSection topRow bottomRow grid
-    values = concatMap (boxSection leftCol rightCol) boxRows
+    slice (first, last) = take (last - first + 1) . drop first
+    values = concatMap (slice cols) $ slice rows grid
+    
