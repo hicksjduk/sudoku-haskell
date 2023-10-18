@@ -17,8 +17,21 @@ emptySquare = 0
 gridSize :: Int
 gridSize = length permittedValues
 
+parametersValid :: Bool
+parametersValid 
+  | gridSize == 0 =
+    error "Grid size is 0"
+  | hasDuplicates permittedValues =
+    error "Permitted values include duplicate(s)"
+  | emptySquare `elem` permittedValues =
+    error "Empty square value is also a permitted value"
+  | otherwise = True
+
+hasDuplicates :: Eq a => [a] -> Bool
+hasDuplicates xs = length xs /= length (nub xs)
+
 boxSize :: (Int, Int)
-boxSize = if gridSize == 0 then (0, 0) else (rows, cols)
+boxSize = (rows, cols)
   where
     x `isDivisorOf` y = y `mod` x == 0
     squareRoot = sqrt $ fromIntegral gridSize
@@ -46,7 +59,7 @@ puzzle = [[8,0,0,0,0,0,0,0,0],
           [0,9,0,0,0,0,4,0,0]]
 
 sudoku :: Grid -> Either String Grid
-sudoku grid = solveIt =<< validate grid
+sudoku grid = if parametersValid then solveIt =<< validate grid else Left "Invalid"
   where
     solveIt grid = case solve grid of
       [] -> Left "No solution found"
@@ -54,12 +67,6 @@ sudoku grid = solveIt =<< validate grid
 
 validate :: Grid -> Either String Grid
 validate grid
-  | gridSize == 0 =
-    Left "Grid size is 0"
-  | hasDuplicates permittedValues =
-    Left "Permitted values include duplicate(s)"
-  | emptySquare `elem` permittedValues =
-    Left "Empty square value is also a permitted value"
   | length grid /= gridSize = 
     Left "Wrong number of rows"
   | any ((/= gridSize) . length) grid = 
@@ -74,7 +81,6 @@ validate grid
     Left "Box contains duplicate value(s)"
   | otherwise = Right grid
   where
-    hasDuplicates xs = length xs /= length (nub xs)
     indices = take gridSize [0..]
 
 solve :: Grid -> [Grid]

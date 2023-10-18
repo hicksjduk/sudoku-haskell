@@ -56,7 +56,7 @@ number of squares in each row, column and box.
 By default, these are set respectively to the values 1 to 9 inclusive and 0; but
 different values could be specified to deal with differently-sized puzzles. 
 The only constraints on this (which are validated, and if violated cause
-an exception to be thrown)
+an error)
 are that `permittedValues` should not be empty, or contain duplicate values or the value of `emptySquare`.
 
 The sizes of the boxes within the puzzle are calculated based on the convention that:
