@@ -20,7 +20,7 @@ The `sudoku` function returns an error message if
 the puzzle is invalid or no solution can be found, otherwise the first solution found is returned. 
 To see examples of the various error conditions and their associated messages, try entering:
 
-* `sudoku $ take 4 puzzle` for the case where the grid does not have 9 rows.
+* `sudoku $ tail puzzle` for the case where the grid does not have 9 rows.
 * `sudoku $ map nub puzzle` for the case where not all rows have 9 columns.
 * `sudoku $ setValueAt (5,4) 41 puzzle` for the case where a cell has an invalid value.
 * `sudoku $ setValueAt (8,0) 4 puzzle` for the case where a row contains duplicate values.
