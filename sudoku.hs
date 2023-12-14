@@ -1,13 +1,7 @@
 module Sudoku where
 
 import Data.List
-
-type Grid = [[Int]]
--- A square is represented by the indices of its row and column.
-type Square = (Int, Int)
--- A box is represented by the ranges of its row and column indices.
-type IntRange = (Int, Int)
-type Box = (IntRange, IntRange)
+import Data.Maybe
 
 permittedValues :: [Int]
 permittedValues = [1..9]
@@ -16,6 +10,17 @@ emptySquare = 0
 
 gridSize :: Int
 gridSize = length permittedValues
+
+type Grid = [[Int]]
+-- A square is represented by the indices of its row and column.
+type Square = (Int, Int)
+-- A box is represented by the ranges of its row and column indices.
+type IntRange = (Int, Int)
+type Box = (IntRange, IntRange)
+
+data Region = Region {squares :: [Square], total :: Int} deriving Show
+
+data Puzzle = SudokuPuzzle Grid | KillerPuzzle [Region] Grid
 
 parametersValid :: Bool
 parametersValid 
@@ -61,9 +66,15 @@ puzzle = [[8,0,0,0,0,0,0,0,0],
 sudoku :: Grid -> Either String Grid
 sudoku grid = if parametersValid then solveIt =<< validate grid else Left "Invalid"
   where
-    solveIt grid = case solve grid of
+    solveIt grid = case solve $ SudokuPuzzle grid of
       [] -> Left "No solution found"
       (solution:_) -> Right solution
+
+killer :: KillerStructure -> Either String Grid
+killer k = case solve $ KillerPuzzle (regions k) emptyGrid of
+  [] -> Left "No solution found"
+  (solution:_) -> Right solution
+  where emptyGrid = replicate gridSize (replicate gridSize emptySquare)
 
 validate :: Grid -> Either String Grid
 validate grid
@@ -83,35 +94,37 @@ validate grid
   where
     indices = take gridSize [0..]
 
-solve :: Grid -> [Grid]
-solve grid = case emptyCells grid of
-  [] -> [grid]
-  (square:_) -> solveAt square grid
+solve :: Puzzle -> [Grid]
+solve p = case emptyCells g of
+  [] -> [g]
+  (square:_) -> solveAt square p
+  where
+    g = grid p
 
 emptyCells :: Grid -> [Square]
-emptyCells grid = concat $ zipWith squares [0..] $ map (elemIndices emptySquare) grid
-  where
-    squares row = map (row,)
+emptyCells = squaresContaining emptySquare
+  
+squaresContaining :: Eq a => a -> [[a]] -> [Square]
+squaresContaining v grid = let squares row = map (row,)
+  in concat $ zipWith squares [0..] $ map (elemIndices v) grid
 
-solveAt :: Square -> Grid -> [Grid]
-solveAt square grid = concatMap solveUsing $ allowedValues square grid
-  where
-    solveUsing value = solve $ setValueAt square value grid
+solveAt :: Square -> Puzzle -> [Grid]
+solveAt square p = let solveUsing value = solve $ withValueAt square value p
+  in concatMap solveUsing $ allowedValues square p   
 
 setValueAt :: Square -> Int -> Grid -> Grid
-setValueAt (row, col) value grid = replaceValueAt row newRow grid
-  where 
-    newRow = replaceValueAt col value (grid !! row)
+setValueAt (row, col) value grid = let newRow = replaceValueAt col value (grid !! row)
+  in replaceValueAt row newRow grid
 
 replaceValueAt :: Int -> a -> [a] -> [a]
-replaceValueAt index value xs = before ++ value : after
-  where 
-    (before, _:after) = splitAt index xs
+replaceValueAt index value xs = let (before, _:after) = splitAt index xs
+  in before ++ value : after
 
-allowedValues :: Square -> Grid -> [Int]
-allowedValues square@(row, col) grid = permittedValues \\ blockedValues
+allowedValues :: Square -> Puzzle -> [Int]
+allowedValues square@(row, col) p = foldl1 (\\) $ possible : blocked
   where
-    blockedValues = concatMap ($ grid)
+    possible = possibleValuesAt square p
+    blocked = map ($ grid p)
       [rowValues row, colValues col, boxValues $ boxContaining square]
 
 rowValues :: Int -> Grid -> [Int]
@@ -135,4 +148,84 @@ boxValues (rows, cols) grid =
   where
     slice (first, last) = take (last - first + 1) . drop first
     values = concatMap (slice cols) $ slice rows grid
-    
+
+grid :: Puzzle -> Grid
+grid (SudokuPuzzle g) = g
+grid (KillerPuzzle _ g) = g
+
+withValueAt :: Square -> Int -> Puzzle -> Puzzle
+withValueAt sq i (SudokuPuzzle g) = SudokuPuzzle $ setValueAt sq i g
+withValueAt sq i (KillerPuzzle r g) = KillerPuzzle r $ setValueAt sq i g
+
+combinations :: (Eq a, Num a) => Int -> a -> [a] -> [[a]]
+combinations 1 targetSum xs = [[targetSum] | targetSum `elem` xs]
+combinations targetLength targetSum xs = concatMap combinationsAt [0 .. length xs - targetLength]
+  where
+    combinationsAt n = let (y:ys) = drop n xs in
+      map (y:) (combinations (targetLength-1) (targetSum-y) ys)
+
+regionValues :: Region -> Grid -> [Int]
+regionValues region grid = filter (/= emptySquare) values
+    where
+        values = map valueAt $ squares region
+        valueAt (row, col) = grid!!row!!col
+
+possibleRegionValues :: Region -> Grid -> [Int]
+possibleRegionValues region grid = nub $ concat $ combinations targetLength targetSum possibleValues
+    where
+        knownValues = regionValues region grid
+        targetLength = length (squares region) - length knownValues
+        targetSum = total region - sum knownValues
+        possibleValues = permittedValues \\ knownValues
+
+possibleValuesAt :: Square -> Puzzle -> [Int]
+possibleValuesAt _ (SudokuPuzzle _) = permittedValues
+possibleValuesAt sq (KillerPuzzle r g) = possibleRegionValues (regionContaining sq r) g
+
+regionContaining :: Square -> [Region] -> Region
+regionContaining sq regions = head $ filter ((sq `elem`) . squares) regions
+
+data KillerStructure = KillerStructure {pattern :: [String], totals :: [(Char, Int)]}
+
+regions :: KillerStructure -> [Region]
+regions k = map makeRegion (nub $ concat $ pattern k)
+    where
+        makeRegion x = Region squares total
+            where
+                squares = squaresContaining x $ pattern k
+                total = fromJust $ lookup x $ totals k
+
+killerPuzzle = KillerStructure
+    [
+        "aabbcddee",
+        "affcccgge",
+        "ffcchccgg",
+        "fijjhjjkg",
+        "iiljjjmkk",
+        "inlooompk",
+        "inooqoopk",
+        "nnorqsopp",
+        "nttrqsuup"
+    ]    [
+        ('a', 14),
+        ('b', 8),
+        ('c', 44),
+        ('d', 15),
+        ('e', 12),
+        ('f', 29),
+        ('g', 26),
+        ('h', 4),
+        ('i', 25),
+        ('j', 36),
+        ('k', 17),
+        ('l', 10),
+        ('m', 7),
+        ('n', 25),
+        ('o', 45),
+        ('p', 35),
+        ('q', 18),
+        ('r', 9),
+        ('s', 10),
+        ('t', 12),
+        ('u', 4)
+    ]
