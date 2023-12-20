@@ -208,6 +208,7 @@ regions k = sort $ map makeRegion (nub $ concat $ pattern k)
 toPuzzle :: KillerStructure -> Puzzle
 toPuzzle str = KillerPuzzle (regions str) emptyGrid
 
+-- Weekly 935
 killerPuzzle = KillerStructure
   [
     "aabbcddee",
