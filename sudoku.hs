@@ -146,7 +146,7 @@ boxValues :: Box -> Grid -> [Int]
 boxValues (rows, cols) grid = 
   filter (/= emptySquare) values
   where
-    slice (first, last) = take (last - first + 1) . drop first
+    slice (first, lastInc) = drop first . take (lastInc + 1)
     values = concatMap (slice cols) $ slice rows grid
 
 grid :: Puzzle -> Grid
