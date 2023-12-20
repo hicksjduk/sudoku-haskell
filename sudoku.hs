@@ -18,9 +18,9 @@ type Square = (Int, Int)
 type IntRange = (Int, Int)
 type Box = (IntRange, IntRange)
 
-data Region = Region {squares :: [Square], total :: Int} deriving Show
+data Puzzle = SudokuPuzzle Grid | KillerPuzzle [Region] Grid deriving Show
 
-data Puzzle = SudokuPuzzle Grid | KillerPuzzle [Region] Grid
+data Region = Region {squares :: [Square], total :: Int} deriving Show
 
 parametersValid :: Bool
 parametersValid 
@@ -74,7 +74,9 @@ killer :: KillerStructure -> Either String Grid
 killer k = case solve $ KillerPuzzle (regions k) emptyGrid of
   [] -> Left "No solution found"
   (solution:_) -> Right solution
-  where emptyGrid = replicate gridSize (replicate gridSize emptySquare)
+
+emptyGrid :: Grid
+emptyGrid = replicate gridSize $ replicate gridSize emptySquare
 
 validate :: Grid -> Either String Grid
 validate grid
@@ -101,6 +103,10 @@ solve p = case emptyCells g of
   where
     g = grid p
 
+grid :: Puzzle -> Grid
+grid (SudokuPuzzle g) = g
+grid (KillerPuzzle _ g) = g
+
 emptyCells :: Grid -> [Square]
 emptyCells = squaresContaining emptySquare
   
@@ -111,6 +117,10 @@ squaresContaining v grid = let squares row = map (row,)
 solveAt :: Square -> Puzzle -> [Grid]
 solveAt square p = let solveUsing value = solve $ withValueAt square value p
   in concatMap solveUsing $ allowedValues square p   
+
+withValueAt :: Square -> Int -> Puzzle -> Puzzle
+withValueAt sq i (SudokuPuzzle g) = SudokuPuzzle $ setValueAt sq i g
+withValueAt sq i (KillerPuzzle rs g) = KillerPuzzle rs $ setValueAt sq i g
 
 setValueAt :: Square -> Int -> Grid -> Grid
 setValueAt (row, col) value grid = let newRow = replaceValueAt col value (grid !! row)
@@ -127,20 +137,21 @@ allowedValues square@(row, col) p = foldl1 (\\) $ possible : blocked
     blocked = map ($ grid p)
       [rowValues row, colValues col, boxValues $ boxContaining square]
 
+possibleValuesAt :: Square -> Puzzle -> [Int]
+possibleValuesAt _ (SudokuPuzzle _) = permittedValues
+possibleValuesAt sq (KillerPuzzle rs g) = possibleRegionValues (regionContaining sq rs) g
+
 rowValues :: Int -> Grid -> [Int]
 rowValues row grid = filter (/= emptySquare) $ grid !! row
 
 colValues :: Int -> Grid -> [Int]
 colValues col grid = filter (/= emptySquare) $ map (!! col) grid
 
-isInBox :: Square -> Box -> Bool
-(row, col) `isInBox` (rows, cols) =
-  inRange row rows && inRange col cols
-  where
-    inRange n (min, max) = n >= min && n <= max
-
 boxContaining :: Square -> Box
 boxContaining square = head $ filter (square `isInBox`) boxes
+  where 
+    (row, col) `isInBox` (rows, cols) = inRange row rows && inRange col cols
+    inRange n (min, max) = n >= min && n <= max
 
 boxValues :: Box -> Grid -> [Int]
 boxValues (rows, cols) grid = 
@@ -149,83 +160,72 @@ boxValues (rows, cols) grid =
     slice (first, lastInc) = drop first . take (lastInc + 1)
     values = concatMap (slice cols) $ slice rows grid
 
-grid :: Puzzle -> Grid
-grid (SudokuPuzzle g) = g
-grid (KillerPuzzle _ g) = g
+regionContaining :: Square -> [Region] -> Region
+regionContaining sq rs = head $ filter ((sq `elem`) . squares) rs
 
-withValueAt :: Square -> Int -> Puzzle -> Puzzle
-withValueAt sq i (SudokuPuzzle g) = SudokuPuzzle $ setValueAt sq i g
-withValueAt sq i (KillerPuzzle r g) = KillerPuzzle r $ setValueAt sq i g
+possibleRegionValues :: Region -> Grid -> [Int]
+possibleRegionValues region grid = nub $ concat combs
+  where
+    knownValues = regionValues region grid
+    targetLength = length (squares region) - length knownValues
+    targetSum = total region - sum knownValues
+    possibleValues = permittedValues \\ knownValues
+    combs = combinations targetLength targetSum possibleValues
 
-combinations :: (Eq a, Num a) => Int -> a -> [a] -> [[a]]
+regionValues :: Region -> Grid -> [Int]
+regionValues region grid = filter (/= emptySquare) values
+  where
+    values = map valueAt $ squares region
+    valueAt (row, col) = grid!!row!!col
+
+combinations :: Int -> Int -> [Int] -> [[Int]]
 combinations 1 targetSum xs = [[targetSum] | targetSum `elem` xs]
 combinations targetLength targetSum xs = concatMap combinationsAt [0 .. length xs - targetLength]
   where
     combinationsAt n = let (y:ys) = drop n xs in
       map (y:) (combinations (targetLength-1) (targetSum-y) ys)
 
-regionValues :: Region -> Grid -> [Int]
-regionValues region grid = filter (/= emptySquare) values
-    where
-        values = map valueAt $ squares region
-        valueAt (row, col) = grid!!row!!col
-
-possibleRegionValues :: Region -> Grid -> [Int]
-possibleRegionValues region grid = nub $ concat $ combinations targetLength targetSum possibleValues
-    where
-        knownValues = regionValues region grid
-        targetLength = length (squares region) - length knownValues
-        targetSum = total region - sum knownValues
-        possibleValues = permittedValues \\ knownValues
-
-possibleValuesAt :: Square -> Puzzle -> [Int]
-possibleValuesAt _ (SudokuPuzzle _) = permittedValues
-possibleValuesAt sq (KillerPuzzle r g) = possibleRegionValues (regionContaining sq r) g
-
-regionContaining :: Square -> [Region] -> Region
-regionContaining sq regions = head $ filter ((sq `elem`) . squares) regions
-
-data KillerStructure = KillerStructure {pattern :: [String], totals :: [(Char, Int)]}
+data KillerStructure = KillerStructure {pattern :: [String], totals :: [(Char, Int)]} deriving Show
 
 regions :: KillerStructure -> [Region]
 regions k = map makeRegion (nub $ concat $ pattern k)
-    where
-        makeRegion x = Region squares total
-            where
-                squares = squaresContaining x $ pattern k
-                total = fromJust $ lookup x $ totals k
+  where
+    makeRegion x = Region squares total
+      where
+        squares = squaresContaining x $ pattern k
+        total = fromJust $ lookup x $ totals k
 
 killerPuzzle = KillerStructure
-    [
-        "aabbcddee",
-        "affcccgge",
-        "ffcchccgg",
-        "fijjhjjkg",
-        "iiljjjmkk",
-        "inlooompk",
-        "inooqoopk",
-        "nnorqsopp",
-        "nttrqsuup"
-    ]    [
-        ('a', 14),
-        ('b', 8),
-        ('c', 44),
-        ('d', 15),
-        ('e', 12),
-        ('f', 29),
-        ('g', 26),
-        ('h', 4),
-        ('i', 25),
-        ('j', 36),
-        ('k', 17),
-        ('l', 10),
-        ('m', 7),
-        ('n', 25),
-        ('o', 45),
-        ('p', 35),
-        ('q', 18),
-        ('r', 9),
-        ('s', 10),
-        ('t', 12),
-        ('u', 4)
-    ]
+  [
+    "aabbcddee",
+    "affcccgge",
+    "ffcchccgg",
+    "fijjhjjkg",
+    "iiljjjmkk",
+    "inlooompk",
+    "inooqoopk",
+    "nnorqsopp",
+    "nttrqsuup"
+  ]    [
+    ('a', 14),
+    ('b', 8),
+    ('c', 44),
+    ('d', 15),
+    ('e', 12),
+    ('f', 29),
+    ('g', 26),
+    ('h', 4),
+    ('i', 25),
+    ('j', 36),
+    ('k', 17),
+    ('l', 10),
+    ('m', 7),
+    ('n', 25),
+    ('o', 45),
+    ('p', 35),
+    ('q', 18),
+    ('r', 9),
+    ('s', 10),
+    ('t', 12),
+    ('u', 4)
+  ]
