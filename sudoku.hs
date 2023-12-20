@@ -20,7 +20,7 @@ type Box = (IntRange, IntRange)
 
 data Puzzle = SudokuPuzzle Grid | KillerPuzzle [Region] Grid deriving Show
 
-data Region = Region {squares :: [Square], total :: Int} deriving Show
+data Region = Region {squares :: [Square], total :: Int} deriving (Show, Eq)
 
 parametersValid :: Bool
 parametersValid 
@@ -71,7 +71,7 @@ sudoku grid = if parametersValid then solveIt =<< validate grid else Left "Inval
       (solution:_) -> Right solution
 
 killer :: KillerStructure -> Either String Grid
-killer k = case solve $ KillerPuzzle (regions k) emptyGrid of
+killer k = case solve $ toPuzzle k of
   [] -> Left "No solution found"
   (solution:_) -> Right solution
 
@@ -97,19 +97,21 @@ validate grid
     indices = take gridSize [0..]
 
 solve :: Puzzle -> [Grid]
-solve p = case emptyCells g of
-  [] -> [g]
+solve p = case emptySquares p of
+  [] -> [grid p]
   (square:_) -> solveAt square p
-  where
-    g = grid p
 
 grid :: Puzzle -> Grid
 grid (SudokuPuzzle g) = g
 grid (KillerPuzzle _ g) = g
 
-emptyCells :: Grid -> [Square]
-emptyCells = squaresContaining emptySquare
-  
+emptySquares :: Puzzle -> [Square]
+emptySquares (SudokuPuzzle grid) = squaresContaining emptySquare grid
+emptySquares (KillerPuzzle rs grid) = concatMap empties rs
+  where 
+    empties r = filter ((== emptySquare) . sqValue) $ squares r
+    sqValue (row, col) = grid !! row !! col
+
 squaresContaining :: Eq a => a -> [[a]] -> [Square]
 squaresContaining v grid = let squares row = map (row,)
   in concat $ zipWith squares [0..] $ map (elemIndices v) grid
@@ -185,15 +187,26 @@ combinations targetLength targetSum xs = concatMap combinationsAt [0 .. length x
     combinationsAt n = let (y:ys) = drop n xs in
       map (y:) (combinations (targetLength-1) (targetSum-y) ys)
 
+instance Ord Region where
+  a `compare` b = foldMap (compareBy a b) [size, minDiff]
+    where 
+      size = length . squares
+      minDiff r = minimum $ map (abs . (total r -) . sum . take (size r)) [pv, reverse pv]
+      pv = permittedValues
+      compareBy x y f = compare (f x) (f y)
+
 data KillerStructure = KillerStructure {pattern :: [String], totals :: [(Char, Int)]} deriving Show
 
 regions :: KillerStructure -> [Region]
-regions k = map makeRegion (nub $ concat $ pattern k)
+regions k = sort $ map makeRegion (nub $ concat $ pattern k)
   where
     makeRegion x = Region squares total
       where
         squares = squaresContaining x $ pattern k
         total = fromJust $ lookup x $ totals k
+
+toPuzzle :: KillerStructure -> Puzzle
+toPuzzle str = KillerPuzzle (regions str) emptyGrid
 
 killerPuzzle = KillerStructure
   [
