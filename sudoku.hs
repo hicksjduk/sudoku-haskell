@@ -105,12 +105,14 @@ grid :: Puzzle -> Grid
 grid (SudokuPuzzle g) = g
 grid (KillerPuzzle _ g) = g
 
+valueAt :: Square -> Grid -> Int
+valueAt (row, col) grid = grid !! row !! col
+
 emptySquares :: Puzzle -> [Square]
 emptySquares (SudokuPuzzle grid) = squaresContaining emptySquare grid
 emptySquares (KillerPuzzle rs grid) = concatMap empties rs
   where 
-    empties r = filter ((== emptySquare) . sqValue) $ squares r
-    sqValue (row, col) = grid !! row !! col
+    empties r = filter ((== emptySquare) . (`valueAt` grid)) $ squares r
 
 squaresContaining :: Eq a => a -> [[a]] -> [Square]
 squaresContaining v grid = let squares row = map (row,)
@@ -125,8 +127,9 @@ withValueAt sq i (SudokuPuzzle g) = SudokuPuzzle $ setValueAt sq i g
 withValueAt sq i (KillerPuzzle rs g) = KillerPuzzle rs $ setValueAt sq i g
 
 setValueAt :: Square -> Int -> Grid -> Grid
-setValueAt (row, col) value grid = let newRow = replaceValueAt col value (grid !! row)
-  in replaceValueAt row newRow grid
+setValueAt (row, col) value grid = 
+  let newRow = replaceValueAt col value (grid !! row)
+    in replaceValueAt row newRow grid
 
 replaceValueAt :: Int -> a -> [a] -> [a]
 replaceValueAt index value xs = let (before, _:after) = splitAt index xs
@@ -141,7 +144,8 @@ allowedValues square@(row, col) p = foldl1 (\\) $ possible : blocked
 
 possibleValuesAt :: Square -> Puzzle -> [Int]
 possibleValuesAt _ (SudokuPuzzle _) = permittedValues
-possibleValuesAt sq (KillerPuzzle rs g) = possibleRegionValues (regionContaining sq rs) g
+possibleValuesAt sq (KillerPuzzle rs g) = 
+  possibleRegionValues (regionContaining sq rs) g
 
 rowValues :: Int -> Grid -> [Int]
 rowValues row grid = filter (/= emptySquare) $ grid !! row
@@ -177,23 +181,19 @@ possibleRegionValues region grid = nub $ concat combs
 regionValues :: Region -> Grid -> [Int]
 regionValues region grid = filter (/= emptySquare) values
   where
-    values = map valueAt $ squares region
-    valueAt (row, col) = grid!!row!!col
+    values = map (`valueAt` grid) $ squares region
 
 combinations :: Int -> Int -> [Int] -> [[Int]]
 combinations 1 targetSum xs = [[targetSum] | targetSum `elem` xs]
-combinations targetLength targetSum xs = concatMap combinationsAt [0 .. length xs - targetLength]
+combinations targetLength targetSum xs = 
+    concatMap combinationsAt [0 .. length xs - targetLength]
   where
     combinationsAt n = let (y:ys) = drop n xs in
       map (y:) (combinations (targetLength-1) (targetSum-y) ys)
 
 instance Ord Region where
-  a `compare` b = foldMap (compareBy a b) [size, minDiff]
-    where 
-      size = length . squares
-      minDiff r = minimum $ map (abs . (total r -) . sum . take (size r)) [pv, reverse pv]
-      pv = permittedValues
-      compareBy x y f = compare (f x) (f y)
+  a `compare` b = compare (valCount a) (valCount b)
+    where valCount r = length $ possibleRegionValues r emptyGrid
 
 data KillerStructure = KillerStructure {pattern :: [String], totals :: [(Char, Int)]} deriving Show
 
