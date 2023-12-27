@@ -189,7 +189,7 @@ combinations targetLength targetSum xs =
     concatMap combinationsAt [0 .. length xs - targetLength]
   where
     combinationsAt n = let (y:ys) = drop n xs in
-      map (y:) (combinations (targetLength-1) (targetSum-y) ys)
+      map (y:) $ combinations (targetLength-1) (targetSum-y) ys
 
 instance Ord Region where
   a `compare` b = compare (valCount a) (valCount b)
