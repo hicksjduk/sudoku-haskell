@@ -112,7 +112,7 @@ emptySquares :: Puzzle -> [Square]
 emptySquares (SudokuPuzzle grid) = squaresContaining emptySquare grid
 emptySquares (KillerPuzzle rs grid) = concatMap empties rs
   where 
-    empties r = filter ((== emptySquare) . (`valueAt` grid)) $ squares r
+    empties = filter ((== emptySquare) . (`valueAt` grid)) . squares
 
 squaresContaining :: Eq a => a -> [[a]] -> [Square]
 squaresContaining v grid = let squares row = map (row,)
