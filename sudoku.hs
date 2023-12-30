@@ -191,19 +191,15 @@ combinations targetLength targetSum xs =
     combinationsAt n = let (y:ys) = drop n xs in
       map (y:) $ combinations (targetLength-1) (targetSum-y) ys
 
-instance Ord Region where
-  a `compare` b = compare (valCount a) (valCount b)
-    where valCount r = length $ possibleRegionValues r emptyGrid
-
 data KillerStructure = KillerStructure {pattern :: [String], totals :: [(Char, Int)]} deriving Show
 
 regions :: KillerStructure -> [Region]
-regions k = sort $ map makeRegion (nub $ concat $ pattern k)
+regions k = sortOn valCount $ map makeRegion (nub $ concat $ pattern k)
   where
-    makeRegion x = Region squares total
-      where
-        squares = squaresContaining x $ pattern k
-        total = fromJust $ lookup x $ totals k
+    valCount r = length $ possibleRegionValues r emptyGrid
+    makeRegion x = Region (squares x) (total x)
+    squares x = squaresContaining x $ pattern k
+    total x = fromJust $ lookup x $ totals k
 
 toPuzzle :: KillerStructure -> Puzzle
 toPuzzle str = KillerPuzzle (regions str) emptyGrid
