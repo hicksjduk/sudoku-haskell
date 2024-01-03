@@ -2,10 +2,11 @@ module Sudoku where
 
 import Data.List
 import Data.Maybe
+import Data.Either
 
 permittedValues :: [Int]
 permittedValues = [1..9]
-emptySquare :: Int 
+emptySquare :: Int
 emptySquare = 0
 
 gridSize :: Int
@@ -23,7 +24,7 @@ data Puzzle = SudokuPuzzle Grid | KillerPuzzle [Region] Grid deriving Show
 data Region = Region {squares :: [Square], total :: Int} deriving (Show, Eq)
 
 parametersValid :: Bool
-parametersValid 
+parametersValid
   | gridSize == 0 =
     error "Grid size is 0"
   | hasDuplicates permittedValues =
@@ -52,8 +53,9 @@ boxes = (,) <$> rowRanges <*> colRanges
     rowRanges = ranges rowsPerBox
     colRanges = ranges colsPerBox
 
-puzzle :: Grid
-puzzle = [[8,0,0,0,0,0,0,0,0],
+puzzle :: Puzzle
+puzzle = SudokuPuzzle 
+         [[8,0,0,0,0,0,0,0,0],
           [0,0,3,6,0,0,0,0,0],
           [0,7,0,0,9,0,2,0,0],
           [0,5,0,0,0,7,0,0,0],
@@ -63,38 +65,59 @@ puzzle = [[8,0,0,0,0,0,0,0,0],
           [0,0,8,5,0,0,0,1,0],
           [0,9,0,0,0,0,4,0,0]]
 
-sudoku :: Grid -> Either String Grid
-sudoku grid = if parametersValid then solveIt =<< validate grid else Left "Invalid"
+sudoku :: Puzzle -> Either String Grid
+sudoku p = if parametersValid then solveIt =<< validate p else Left "Invalid"
   where
-    solveIt grid = case solve $ SudokuPuzzle grid of
+    solveIt p = case solve p of
       [] -> Left "No solution found"
       (solution:_) -> Right solution
-
-killer :: KillerStructure -> Either String Grid
-killer k = case solve $ toPuzzle k of
-  [] -> Left "No solution found"
-  (solution:_) -> Right solution
 
 emptyGrid :: Grid
 emptyGrid = replicate gridSize $ replicate gridSize emptySquare
 
-validate :: Grid -> Either String Grid
-validate grid
-  | length grid /= gridSize = 
+validate :: Puzzle -> Either String Puzzle
+validate p@(SudokuPuzzle g) = case validateGrid g of
+  (Left s) -> Left s
+  (Right _) -> Right p
+validate p@(KillerPuzzle rs _) = case validateRegions rs of
+  (Left s) -> Left s
+  (Right _) -> Right p
+
+validateGrid :: Grid -> Either String Grid
+validateGrid grid
+  | length grid /= gridSize =
     Left "Wrong number of rows"
-  | any ((/= gridSize) . length) grid = 
+  | any ((/= gridSize) . length) grid =
     Left "Wrong number of columns"
-  | any (any (`notElem` emptySquare : permittedValues)) grid = 
+  | any (any (`notElem` emptySquare : permittedValues)) grid =
     Left "Invalid cell value"
-  | any (hasDuplicates . (`rowValues` grid)) indices = 
+  | any (hasDuplicates . (`rowValues` grid)) indices =
     Left "Row contains duplicate value(s)"
-  | any (hasDuplicates . (`colValues` grid)) indices = 
+  | any (hasDuplicates . (`colValues` grid)) indices =
     Left "Column contains duplicate value(s)"
-  | any (hasDuplicates . (`boxValues` grid)) boxes = 
+  | any (hasDuplicates . (`boxValues` grid)) boxes =
     Left "Box contains duplicate value(s)"
   | otherwise = Right grid
   where
     indices = take gridSize [0..]
+
+validateRegions :: [Region] -> Either String [Region]
+validateRegions rs
+  | any totalOutOfRange rs = Left "Region total out of permitted range"
+  | sum (map total rs) /= (gridSize * sum permittedValues) = Left "Region totals incorrect"
+  | otherwise = Right rs
+
+minRegionValue :: Int -> Int
+minRegionValue count = (sum . take count . sort) permittedValues
+
+maxRegionValue :: Int -> Int
+maxRegionValue count = (sum . take count . reverse . sort) permittedValues
+
+totalOutOfRange :: Region -> Bool
+totalOutOfRange r = tot < minRegionValue count || tot > maxRegionValue count
+  where
+    count = length $ squares r
+    tot = total r
 
 solve :: Puzzle -> [Grid]
 solve p = case emptySquares p of
@@ -111,7 +134,7 @@ valueAt (row, col) grid = grid !! row !! col
 emptySquares :: Puzzle -> [Square]
 emptySquares (SudokuPuzzle grid) = squaresContaining emptySquare grid
 emptySquares (KillerPuzzle rs grid) = concatMap empties rs
-  where 
+  where
     empties = filter ((== emptySquare) . (`valueAt` grid)) . squares
 
 squaresContaining :: Eq a => a -> [[a]] -> [Square]
@@ -120,14 +143,14 @@ squaresContaining v grid = let squares row = map (row,)
 
 solveAt :: Square -> Puzzle -> [Grid]
 solveAt square p = let solveUsing value = solve $ withValueAt square value p
-  in concatMap solveUsing $ allowedValues square p   
+  in concatMap solveUsing $ allowedValues square p
 
 withValueAt :: Square -> Int -> Puzzle -> Puzzle
 withValueAt sq i (SudokuPuzzle g) = SudokuPuzzle $ setValueAt sq i g
 withValueAt sq i (KillerPuzzle rs g) = KillerPuzzle rs $ setValueAt sq i g
 
 setValueAt :: Square -> Int -> Grid -> Grid
-setValueAt (row, col) value grid = 
+setValueAt (row, col) value grid =
   let newRow = replaceValueAt col value (grid !! row)
     in replaceValueAt row newRow grid
 
@@ -144,7 +167,7 @@ allowedValues square@(row, col) p = foldl1 (\\) $ possible : blocked
 
 possibleValuesAt :: Square -> Puzzle -> [Int]
 possibleValuesAt _ (SudokuPuzzle _) = permittedValues
-possibleValuesAt sq (KillerPuzzle rs g) = 
+possibleValuesAt sq (KillerPuzzle rs g) =
   possibleRegionValues (regionContaining sq rs) g
 
 rowValues :: Int -> Grid -> [Int]
@@ -155,12 +178,12 @@ colValues col grid = filter (/= emptySquare) $ map (!! col) grid
 
 boxContaining :: Square -> Box
 boxContaining square = head $ filter (square `isInBox`) boxes
-  where 
+  where
     (row, col) `isInBox` (rows, cols) = inRange row rows && inRange col cols
     inRange n (min, max) = n >= min && n <= max
 
 boxValues :: Box -> Grid -> [Int]
-boxValues (rows, cols) grid = 
+boxValues (rows, cols) grid =
   filter (/= emptySquare) values
   where
     slice (first, lastInc) = drop first . take (lastInc + 1)
@@ -185,8 +208,7 @@ regionValues region grid = filter (/= emptySquare) values
 
 combinations :: Int -> Int -> [Int] -> [[Int]]
 combinations 1 targetSum xs = [[targetSum] | targetSum `elem` xs]
-combinations targetLength targetSum xs = 
-    concatMap combinationsAt [0 .. length xs - targetLength]
+combinations targetLength targetSum xs = concatMap combinationsAt [0 .. length xs - targetLength]
   where
     combinationsAt n = let (y:ys) = drop n xs in
       map (y:) $ combinations (targetLength-1) (targetSum-y) ys
@@ -205,7 +227,8 @@ toPuzzle :: KillerStructure -> Puzzle
 toPuzzle str = KillerPuzzle (regions str) emptyGrid
 
 -- Weekly 935
-killerPuzzle = KillerStructure
+killerPuzzle :: Puzzle
+killerPuzzle = toPuzzle $ KillerStructure
   [
     "aabbcddee",
     "affcccgge",
