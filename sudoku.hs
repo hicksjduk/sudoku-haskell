@@ -215,20 +215,20 @@ combinations targetLength targetSum xs = concatMap combinationsAt [0 .. length x
 
 data KillerStructure = KillerStructure {pattern :: [String], totals :: [(Char, Int)]} deriving Show
 
-regions :: KillerStructure -> [Region]
-regions k = sortOn valCount $ map makeRegion (nub $ concat $ pattern k)
+regions :: [String] -> [(Char, Int)] -> [Region]
+regions pattern totals = sortOn valCount $ map makeRegion (nub $ concat pattern)
   where
     valCount r = length $ possibleRegionValues r emptyGrid
     makeRegion x = Region (squares x) (total x)
-    squares x = squaresContaining x $ pattern k
-    total x = fromJust $ lookup x $ totals k
+    squares x = squaresContaining x pattern
+    total x = fromJust $ lookup x totals
 
-toPuzzle :: KillerStructure -> Puzzle
-toPuzzle str = KillerPuzzle (regions str) emptyGrid
+toPuzzle :: [String] -> [(Char, Int)] -> Puzzle
+toPuzzle pattern totals = KillerPuzzle (regions pattern totals) emptyGrid
 
 -- Weekly 935
 killerPuzzle :: Puzzle
-killerPuzzle = toPuzzle $ KillerStructure
+killerPuzzle = toPuzzle 
   [
     "aabbcddee",
     "affcccgge",
