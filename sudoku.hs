@@ -103,9 +103,19 @@ validateGrid grid
 
 validateRegions :: [Region] -> Either String [Region]
 validateRegions rs
-  | any totalOutOfRange rs = Left "Region total out of permitted range"
-  | sum (map total rs) /= (gridSize * sum permittedValues) = Left "Region totals incorrect"
+  | any totalOutOfRange rs = 
+    Left "Region total out of permitted range"
+  | sum (map total rs) /= (gridSize * sum permittedValues) = 
+    Left "Region totals incorrect"
+  | length sq /= (gridSize * gridSize) =
+    Left "Incorrect number of squares in regions"
+  | any indexOutOfRange sq = 
+    Left "Square index out of range"
   | otherwise = Right rs
+  where
+    sq = concatMap squares rs
+    indexOutOfRange (row, col) = outOfRange row || outOfRange col
+    outOfRange n = n < 0 || n >= gridSize
 
 minRegionValue :: Int -> Int
 minRegionValue count = (sum . take count . sort) permittedValues
