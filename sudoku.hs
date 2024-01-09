@@ -223,8 +223,6 @@ combinations targetLength targetSum xs = concatMap combinationsAt [0 .. length x
     combinationsAt n = let (y:ys) = drop n xs in
       map (y:) $ combinations (targetLength-1) (targetSum-y) ys
 
-data KillerStructure = KillerStructure {pattern :: [String], totals :: [(Char, Int)]} deriving Show
-
 regions :: [String] -> [(Char, Int)] -> [Region]
 regions pattern totals = sortOn valCount $ map makeRegion (nub $ concat pattern)
   where
