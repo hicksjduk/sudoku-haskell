@@ -216,7 +216,7 @@ regionValues region grid = filter (/= emptySquare) values
   where
     values = map (`valueAt` grid) $ squares region
 
-combinations :: Int -> Int -> [Int] -> [[Int]]
+combinations :: (Num a, Eq a) => Int -> a -> [a] -> [[a]]
 combinations 1 targetSum xs = [[targetSum] | targetSum `elem` xs]
 combinations targetLength targetSum xs = concatMap combinationsAt [0 .. length xs - targetLength]
   where
