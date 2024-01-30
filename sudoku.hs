@@ -209,7 +209,7 @@ possibleRegionValues region grid = nub $ concat combs
     targetLength = length (squares region) - length knownValues
     targetSum = total region - sum knownValues
     possibleValues = permittedValues \\ knownValues
-    combs = combinations targetLength targetSum possibleValues
+    combs = filter (null . (\\ possibleValues)) $ combine targetLength targetSum
 
 regionValues :: Region -> Grid -> [Int]
 regionValues region grid = filter (/= emptySquare) values
@@ -222,6 +222,14 @@ combinations targetLength targetSum xs = concatMap combinationsAt [0 .. length x
   where
     combinationsAt n = let (y:ys) = drop n xs in
       map (y:) $ combinations (targetLength-1) (targetSum-y) ys
+
+combine :: Int -> Int -> [[Int]]
+combine targetLength targetSum = cache !! key 
+  where
+    key = targetLength * 100 + targetSum
+    cache = map comb [0..]
+    comb n = let (tl, ts) = (n `div` 100, n `mod` 100) in
+      combinations tl ts permittedValues     
 
 regions :: [String] -> [(Char, Int)] -> [Region]
 regions pattern totals = sortOn valCount $ map makeRegion (nub $ concat pattern)
