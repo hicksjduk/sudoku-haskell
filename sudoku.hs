@@ -208,8 +208,7 @@ possibleRegionValues region grid = nub $ concat combs
     knownValues = regionValues region grid
     targetLength = length (squares region) - length knownValues
     targetSum = total region - sum knownValues
-    possibleValues = permittedValues \\ knownValues
-    combs = filter (null . (\\ possibleValues)) $ combine targetLength targetSum
+    combs = filter (all (`notElem` knownValues)) $ combine targetLength targetSum
 
 regionValues :: Region -> Grid -> [Int]
 regionValues region grid = filter (/= emptySquare) values
