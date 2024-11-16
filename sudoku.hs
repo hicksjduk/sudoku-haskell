@@ -203,40 +203,23 @@ regionContaining :: Square -> [Region] -> Region
 regionContaining sq rs = head $ filter ((sq `elem`) . squares) rs
 
 possibleRegionValues :: Region -> Grid -> [Int]
-possibleRegionValues region grid = nub $ concat combs
+possibleRegionValues region grid = 
+  case partition (== emptySquare) squareValues of
+    ([_], values) -> let onlyPossible = total region - sum values in
+      if onlyPossible `elem` values || onlyPossible `notElem` permittedValues then [] else [onlyPossible]
+    (_, values) -> permittedValues \\ values
   where
-    knownValues = regionValues region grid
-    targetLength = length (squares region) - length knownValues
-    targetSum = total region - sum knownValues
-    combs = filter (all (`notElem` knownValues)) $ combine targetLength targetSum
-
-regionValues :: Region -> Grid -> [Int]
-regionValues region grid = filter (/= emptySquare) values
-  where
-    values = map (`valueAt` grid) $ squares region
-
-combinations :: (Num a, Eq a) => Int -> a -> [a] -> [[a]]
-combinations 1 targetSum xs = [[targetSum] | targetSum `elem` xs]
-combinations targetLength targetSum xs = concatMap combinationsAt [0 .. length xs - targetLength]
-  where
-    combinationsAt n = let (y:ys) = drop n xs in
-      map (y:) $ combinations (targetLength-1) (targetSum-y) ys
-
-combine :: Int -> Int -> [[Int]]
-combine targetLength targetSum = cache !! key 
-  where
-    key = targetLength * 100 + targetSum
-    cache = map comb [0..]
-    comb n = let (tl, ts) = (n `div` 100, n `mod` 100) in
-      combinations tl ts permittedValues     
+    squareValues = map (`valueAt` grid) $ squares region
 
 regions :: [String] -> [(Char, Int)] -> [Region]
-regions pattern totals = sortOn valCount $ map makeRegion (nub $ concat pattern)
+regions pattern totals = sortOn regionSize $ map makeRegion (nub $ concat pattern)
   where
-    valCount r = length $ possibleRegionValues r emptyGrid
     makeRegion x = Region (squares x) (total x)
     squares x = squaresContaining x pattern
     total x = fromJust $ lookup x totals
+
+regionSize :: Region -> Int
+regionSize = length . squares
 
 toPuzzle :: [String] -> [(Char, Int)] -> Puzzle
 toPuzzle pattern totals = KillerPuzzle (regions pattern totals) emptyGrid
@@ -276,4 +259,58 @@ killerPuzzle = toPuzzle
     ('s', 10),
     ('t', 12),
     ('u', 4)
+  ]
+
+-- Daily 6617
+killerPuzzle2 = toPuzzle 
+  [
+    "aabbcddef",
+    "gghcciief",
+    "jjhklmnno",
+    "pqqklmrro",
+    "psstttuuv",
+    "wxxyz122v",
+    "w33yz1455",
+    "6788994AA",
+    "67BB9CCDD"
+  ]    [
+    ('a', 14),
+    ('b', 8),
+    ('c', 16),
+    ('d', 10),
+    ('e', 9),
+    ('f', 13),
+    ('g', 7),
+    ('h', 11),
+    ('i', 9),
+    ('j', 10),
+    ('k', 9),
+    ('l', 10),
+    ('m', 12),
+    ('n', 11),
+    ('o', 7),
+    ('p', 8),
+    ('q', 10),
+    ('r', 11),
+    ('s', 12),
+    ('t', 11),
+    ('u', 16),
+    ('v', 4),
+    ('w', 10),
+    ('x', 9),
+    ('y', 17),
+    ('z', 6),
+    ('1', 7),
+    ('2', 12),
+    ('3', 9),
+    ('4', 11),
+    ('5', 8),
+    ('6', 16),
+    ('7', 10),
+    ('8', 5),
+    ('9', 19),
+    ('A', 11),
+    ('B', 11),
+    ('C', 4),
+    ('D', 12)
   ]
