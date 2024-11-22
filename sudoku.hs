@@ -21,7 +21,7 @@ type Box = (IntRange, IntRange)
 
 data Puzzle = SudokuPuzzle Grid | KillerPuzzle [Region] Grid deriving Show
 
-data Region = Region {squares :: [Square], total :: Int} deriving (Show, Eq)
+data Region = Region {squares :: [Square], total :: Int, possibleValues :: [Int]} deriving (Show, Eq)
 
 parametersValid :: Bool
 parametersValid
@@ -54,7 +54,7 @@ boxes = (,) <$> rowRanges <*> colRanges
     colRanges = ranges colsPerBox
 
 puzzle :: Puzzle
-puzzle = SudokuPuzzle 
+puzzle = SudokuPuzzle
          [[8,0,0,0,0,0,0,0,0],
           [0,0,3,6,0,0,0,0,0],
           [0,7,0,0,9,0,2,0,0],
@@ -103,13 +103,13 @@ validateGrid grid
 
 validateRegions :: [Region] -> Either String [Region]
 validateRegions rs
-  | any totalOutOfRange rs = 
+  | any totalOutOfRange rs =
     Left "Region total out of permitted range"
-  | sum (map total rs) /= (gridSize * sum permittedValues) = 
+  | sum (map total rs) /= (gridSize * sum permittedValues) =
     Left "Region totals incorrect"
   | length sq /= (gridSize * gridSize) =
     Left "Incorrect number of squares in regions"
-  | any indexOutOfRange sq = 
+  | any indexOutOfRange sq =
     Left "Square index out of range"
   | otherwise = Right rs
   where
@@ -117,14 +117,20 @@ validateRegions rs
     indexOutOfRange (row, col) = outOfRange row || outOfRange col
     outOfRange n = n < 0 || n >= gridSize
 
-minRegionValue :: Int -> Int
-minRegionValue count = (sum . take count . sort) permittedValues
+minRegionTotal :: Int -> Int
+minRegionTotal count = cache !! count
+  where
+    cache = map mrt [0..]
+    mrt count = (sum . take count . sort) permittedValues
 
-maxRegionValue :: Int -> Int
-maxRegionValue count = (sum . take count . reverse . sort) permittedValues
+maxRegionTotal :: Int -> Int
+maxRegionTotal count = cache !! count
+  where
+    cache = map mrt [0..]
+    mrt count = (sum . take count . reverse . sort) permittedValues
 
 totalOutOfRange :: Region -> Bool
-totalOutOfRange r = tot < minRegionValue count || tot > maxRegionValue count
+totalOutOfRange r = tot < minRegionTotal count || tot > maxRegionTotal count
   where
     count = length $ squares r
     tot = total r
@@ -203,20 +209,24 @@ regionContaining :: Square -> [Region] -> Region
 regionContaining sq rs = head $ filter ((sq `elem`) . squares) rs
 
 possibleRegionValues :: Region -> Grid -> [Int]
-possibleRegionValues region grid = 
+possibleRegionValues region grid =
   case partition (== emptySquare) squareValues of
     ([_], values) -> let onlyPossible = total region - sum values in
-      if onlyPossible `elem` values || onlyPossible `notElem` permittedValues then [] else [onlyPossible]
-    (_, values) -> permittedValues \\ values
+      ([onlyPossible | not (onlyPossible `elem` values || onlyPossible `notElem` vals)])
+    (_, values) -> vals \\ values
   where
     squareValues = map (`valueAt` grid) $ squares region
+    vals = possibleValues region
 
 regions :: [String] -> [(Char, Int)] -> [Region]
-regions pattern totals = sortOn regionSize $ map makeRegion (nub $ concat pattern)
+regions pattern totals = sortOn (length . possibleValues) $ map makeRegion (nub $ concat pattern)
   where
-    makeRegion x = Region (squares x) (total x)
-    squares x = squaresContaining x pattern
-    total x = fromJust $ lookup x totals
+    makeRegion x = Region squares total $ intersect [minValue .. maxValue] permittedValues
+      where
+        squares = squaresContaining x pattern
+        total = fromJust $ lookup x totals
+        minValue = total - maxRegionTotal (length squares - 1)
+        maxValue = total - minRegionTotal (length squares - 1)
 
 regionSize :: Region -> Int
 regionSize = length . squares
@@ -226,7 +236,7 @@ toPuzzle pattern totals = KillerPuzzle (regions pattern totals) emptyGrid
 
 -- Weekly 935
 killerPuzzle :: Puzzle
-killerPuzzle = toPuzzle 
+killerPuzzle = toPuzzle
   [
     "aabbcddee",
     "affcccgge",
@@ -262,7 +272,7 @@ killerPuzzle = toPuzzle
   ]
 
 -- Daily 6617
-killerPuzzle2 = toPuzzle 
+killerPuzzle2 = toPuzzle
   [
     "aabbcddef",
     "gghcciief",
