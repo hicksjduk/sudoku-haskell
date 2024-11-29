@@ -3,6 +3,7 @@ module Sudoku where
 import Data.List
 import Data.Maybe
 import Data.Either
+import Data.Function
 import Combine
 
 permittedValues :: [Int]
@@ -220,14 +221,13 @@ possibleRegionValues region grid =
     vals = possibleValues region
 
 regions :: [String] -> [(Char, Int)] -> [Region]
-regions pattern totals = sortOn (length . possibleValues) $ map makeRegion (nub $ concat pattern)
+regions pattern totals = foldMap sortBy criteria $ map makeRegion (nub $ concat pattern)
   where
-    makeRegion x = Region squares total $ nub $ concat $ combinations (length squares) total
+    criteria = (compare `on`) <$> [length . possibleValues, length . squares]
+    makeRegion x = Region sq total $ nub $ concat $ combinations (length sq) total
       where
-        squares = squaresContaining x pattern
+        sq = squaresContaining x pattern
         total = fromJust $ lookup x totals
-        minValue = total - maxRegionTotal (length squares - 1)
-        maxValue = total - minRegionTotal (length squares - 1)
 
 combinations :: Int -> Int -> [[Int]]
 combinations size total = cache !! size !! total
