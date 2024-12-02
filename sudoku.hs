@@ -211,10 +211,12 @@ regionContaining :: Square -> [Region] -> Region
 regionContaining sq rs = head $ filter ((sq `elem`) . squares) rs
 
 possibleRegionValues :: Region -> Grid -> [Int]
-possibleRegionValues region grid = let notBlocked vals = possibleValues region \\ vals in
-  case partition (== emptySquare) $ map (`valueAt` grid) $ squares region of
-    ([_], values) -> notBlocked values `intersect` [total region - sum values]
-    (_, values) -> notBlocked values
+possibleRegionValues region grid = case empty of
+    [_] -> notBlocked `intersect` [total region - sum notEmpty]
+    _ -> notBlocked
+  where 
+    (empty, notEmpty) = partition (== emptySquare) $ map (`valueAt` grid) $ squares region
+    notBlocked = possibleValues region \\ notEmpty
 
 regions :: [String] -> [(Char, Int)] -> [Region]
 regions pattern totals = sortBy sortThem $ map makeRegion (nub $ concat pattern)
