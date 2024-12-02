@@ -119,24 +119,6 @@ validateRegions rs
     indexOutOfRange (row, col) = outOfRange row || outOfRange col
     outOfRange n = n < 0 || n >= gridSize
 
-minRegionTotal :: Int -> Int
-minRegionTotal count = cache !! count
-  where
-    cache = map mrt [0..]
-    mrt count = (sum . take count . sort) permittedValues
-
-maxRegionTotal :: Int -> Int
-maxRegionTotal count = cache !! count
-  where
-    cache = map mrt [0..]
-    mrt count = (sum . take count . reverse . sort) permittedValues
-
-totalOutOfRange :: Region -> Bool
-totalOutOfRange r = tot < minRegionTotal count || tot > maxRegionTotal count
-  where
-    count = length $ squares r
-    tot = total r
-
 solve :: Puzzle -> [Grid]
 solve p = case emptySquares p of
   [] -> [grid p]
@@ -207,23 +189,38 @@ boxValues (rows, cols) grid =
     slice (first, lastInc) = drop first . take (lastInc + 1)
     values = concatMap (slice cols) $ slice rows grid
 
+minRegionTotal :: Int -> Int
+minRegionTotal count = cache !! count
+  where
+    cache = map mrt [0..]
+    mrt count = (sum . take count . sort) permittedValues
+
+maxRegionTotal :: Int -> Int
+maxRegionTotal count = cache !! count
+  where
+    cache = map mrt [0..]
+    mrt count = (sum . take count . reverse . sort) permittedValues
+
+totalOutOfRange :: Region -> Bool
+totalOutOfRange r = tot < minRegionTotal count || tot > maxRegionTotal count
+  where
+    count = length $ squares r
+    tot = total r
+
 regionContaining :: Square -> [Region] -> Region
 regionContaining sq rs = head $ filter ((sq `elem`) . squares) rs
 
 possibleRegionValues :: Region -> Grid -> [Int]
-possibleRegionValues region grid =
-  case partition (== emptySquare) squareValues of
-    ([_], values) -> let onlyPossible = total region - sum values in
-      ([onlyPossible | not (onlyPossible `elem` values || onlyPossible `notElem` vals)])
-    (_, values) -> vals \\ values
-  where
-    squareValues = map (`valueAt` grid) $ squares region
-    vals = possibleValues region
+possibleRegionValues region grid = let notBlocked vals = possibleValues region \\ vals in
+  case partition (== emptySquare) $ map (`valueAt` grid) $ squares region of
+    ([_], values) -> notBlocked values `intersect` [total region - sum values]
+    (_, values) -> notBlocked values
 
 regions :: [String] -> [(Char, Int)] -> [Region]
-regions pattern totals = foldMap sortBy criteria $ map makeRegion (nub $ concat pattern)
+regions pattern totals = sortBy sortThem $ map makeRegion (nub $ concat pattern)
   where
-    criteria = (compare `on`) <$> [length . possibleValues, length . squares]
+    sortThem = foldMap (compare `on`) criteria
+    criteria = [length . possibleValues, length . squares]
     makeRegion x = Region sq total $ nub $ concat $ combinations (length sq) total
       where
         sq = squaresContaining x pattern
@@ -231,7 +228,7 @@ regions pattern totals = foldMap sortBy criteria $ map makeRegion (nub $ concat 
 
 combinations :: Int -> Int -> [[Int]]
 combinations size total = cache !! size !! total
-  where 
+  where
     cache = map cacheBy [0..]
     cacheBy s = map (combs s) [0..]
     combs s t = filter ((== t) . sum) $ combineExactLength s permittedValues
