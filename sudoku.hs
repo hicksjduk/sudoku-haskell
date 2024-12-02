@@ -212,7 +212,7 @@ regionContaining sq rs = head $ filter ((sq `elem`) . squares) rs
 
 possibleRegionValues :: Region -> Grid -> [Int]
 possibleRegionValues region grid = case empty of
-    [_] -> notBlocked `intersect` [total region - sum notEmpty]
+    [_] -> [total region - sum notEmpty] `intersect` notBlocked
     _ -> notBlocked
   where 
     (empty, notEmpty) = partition (== emptySquare) $ map (`valueAt` grid) $ squares region
