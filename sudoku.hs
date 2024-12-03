@@ -78,12 +78,8 @@ emptyGrid :: Grid
 emptyGrid = replicate gridSize $ replicate gridSize emptySquare
 
 validate :: Puzzle -> Either String Puzzle
-validate p@(SudokuPuzzle g) = case validateGrid g of
-  (Left s) -> Left s
-  (Right _) -> Right p
-validate p@(KillerPuzzle rs _) = case validateRegions rs of
-  (Left s) -> Left s
-  (Right _) -> Right p
+validate p@(SudokuPuzzle g) = validateGrid g >> Right p
+validate p@(KillerPuzzle rs _) = validateRegions rs >> Right p
 
 validateGrid :: Grid -> Either String Grid
 validateGrid grid
@@ -100,7 +96,7 @@ validateGrid grid
   | any (hasDuplicates . (`boxValues` grid)) boxes =
     Left "Box contains duplicate value(s)"
   | otherwise = Right grid
-  where
+  where 
     indices = take gridSize [0..]
 
 validateRegions :: [Region] -> Either String [Region]
@@ -208,7 +204,11 @@ totalOutOfRange r = tot < minRegionTotal count || tot > maxRegionTotal count
     tot = total r
 
 regionContaining :: Square -> [Region] -> Region
-regionContaining sq rs = head $ filter ((sq `elem`) . squares) rs
+regionContaining (row, col) rs = cache !! row !! col
+  where
+    cache = map forRow [0..]
+    forRow r = map (rc . (r,)) [0..]
+    rc sq = head $ filter ((sq `elem`) . squares) rs
 
 possibleRegionValues :: Region -> Grid -> [Int]
 possibleRegionValues region grid = case empty of
