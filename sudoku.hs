@@ -78,8 +78,8 @@ emptyGrid :: Grid
 emptyGrid = replicate gridSize $ replicate gridSize emptySquare
 
 validate :: Puzzle -> Either String Puzzle
-validate p@(SudokuPuzzle g) = validateGrid g >> Right p
-validate p@(KillerPuzzle rs _) = validateRegions rs >> Right p
+validate p@(SudokuPuzzle g) = validateGrid g >> return p
+validate p@(KillerPuzzle rs _) = validateRegions rs >> return p
 
 validateGrid :: Grid -> Either String Grid
 validateGrid grid
@@ -95,7 +95,7 @@ validateGrid grid
     Left "Column contains duplicate value(s)"
   | any (hasDuplicates . (`boxValues` grid)) boxes =
     Left "Box contains duplicate value(s)"
-  | otherwise = Right grid
+  | otherwise = return grid
   where 
     indices = take gridSize [0..]
 
@@ -109,7 +109,7 @@ validateRegions rs
     Left "Incorrect number of squares in regions"
   | any indexOutOfRange sq =
     Left "Square index out of range"
-  | otherwise = Right rs
+  | otherwise = return rs
   where
     sq = concatMap squares rs
     indexOutOfRange (row, col) = outOfRange row || outOfRange col
