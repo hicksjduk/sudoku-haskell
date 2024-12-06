@@ -1,10 +1,15 @@
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-compat-unqualified-imports #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Avoid reverse" #-}
 
 module Sudoku where
 
 import Data.List
 import Data.Maybe
-import Data.Either
 import Data.Function
 import Combine
 import Control.Parallel
@@ -285,6 +290,7 @@ killerPuzzle = toPuzzle
   ]
 
 -- Daily 6617
+killerPuzzle2 :: Puzzle
 killerPuzzle2 = toPuzzle
   [
     "aabbcddef",
