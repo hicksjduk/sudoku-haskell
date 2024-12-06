@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Sudoku where
 
 import Data.List
@@ -136,7 +138,7 @@ emptySquares (KillerPuzzle rs grid) = concatMap empties rs
     empties = filter ((== emptySquare) . (`valueAt` grid)) . squares
 
 squaresContaining :: Eq a => a -> [[a]] -> [Square]
-squaresContaining v grid = let squares row = map (\col -> (row, col))
+squaresContaining v grid = let squares row = map (row,)
   in concat $ zipWith squares [0..] $ map (elemIndices v) grid
 
 solveAt :: Square -> Puzzle -> [Grid]
@@ -211,7 +213,7 @@ regionContaining :: Square -> [Region] -> Region
 regionContaining (row, col) rs = cache !! row !! col
   where
     cache = map forRow [0..]
-    forRow r = map (rc . \c -> (r, c)) [0..]
+    forRow r = map (rc . (r,)) [0..]
     rc sq = head $ filter ((sq `elem`) . squares) rs
 
 possibleRegionValues :: Region -> Grid -> [Int]
