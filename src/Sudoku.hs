@@ -5,6 +5,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Avoid reverse" #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Sudoku where
 
@@ -31,8 +32,31 @@ type Box = (IntRange, IntRange)
 
 data Puzzle = SudokuPuzzle Grid | KillerPuzzle [Region] Grid deriving Show
 
-data Region = Region {squares :: [Square], total :: Int, 
-  possibleCombinations :: [[Int]], possibleValues :: [Int]} deriving (Show, Eq)
+-- A region has a list of squares, and a list of possible combinations of values,
+-- all of which add up to a specific total.
+data Region = Region {squares :: [Square], possibleCombinations :: [[Int]]} deriving (Show, Eq)
+
+-- The total which each combination adds up to: if the list of combinations is
+-- empty it is 0, otherwise it is the sum of the first combination.
+total :: Region -> Int
+total (Region _ []) = 0
+total (Region _ (c:_)) = sum c
+
+empty :: Region -> Bool
+empty (Region [] _) = True
+empty _ = False
+
+withoutValue :: Region -> Int -> Region
+(Region [_] _) `withoutValue` _ = Region [] []
+(Region (_:squares) combs) `withoutValue` value =
+  let newCombs = mapMaybe (deleteIfPresent value) combs
+  in Region squares newCombs
+
+deleteIfPresent :: Eq a => a -> [a] -> Maybe [a]
+deleteIfPresent value xs = deleteAt =<< elemIndex value xs
+  where
+    deleteAt i = let (before, _:after) = splitAt i xs
+      in Just $ before ++ after
 
 parametersValid :: Bool
 parametersValid
@@ -105,7 +129,7 @@ validateGrid grid
   | any (hasDuplicates . (`boxValues` grid)) boxes =
     Left "Box contains duplicate value(s)"
   | otherwise = return grid
-  where 
+  where
     indices = take gridSize [0..]
 
 validateRegions :: [Region] -> Either String [Region]
@@ -138,9 +162,7 @@ valueAt (row, col) grid = grid !! row !! col
 
 emptySquares :: Puzzle -> [Square]
 emptySquares (SudokuPuzzle grid) = squaresContaining emptySquare grid
-emptySquares (KillerPuzzle rs grid) = concatMap empties rs
-  where
-    empties = filter ((== emptySquare) . (`valueAt` grid)) . squares
+emptySquares (KillerPuzzle rs _) = concatMap squares rs
 
 squaresContaining :: Eq a => a -> [[a]] -> [Square]
 squaresContaining v grid = let squares row = map (row,)
@@ -149,12 +171,15 @@ squaresContaining v grid = let squares row = map (row,)
 solveAt :: Square -> Puzzle -> [Grid]
 solveAt square p = concatMap solveUsing $ allowedValues square p
   where
-    solveUsing value = let solution = solve $ withValueAt square value p
-      in par solution solution
-    
+    solveUsing value = solve $ withValueAt square value p
+
 withValueAt :: Square -> Int -> Puzzle -> Puzzle
 withValueAt sq i (SudokuPuzzle g) = SudokuPuzzle $ setValueAt sq i g
-withValueAt sq i (KillerPuzzle rs g) = KillerPuzzle rs $ setValueAt sq i g
+withValueAt sq i (KillerPuzzle rs g) = KillerPuzzle regions $ setValueAt sq i g
+  where 
+    (r:rr) = rs
+    nr = r `withoutValue` i
+    regions = if empty nr then rr else nr : rr
 
 setValueAt :: Square -> Int -> Grid -> Grid
 setValueAt (row, col) value grid =
@@ -174,8 +199,7 @@ allowedValues square@(row, col) p = foldl1 (\\) $ possible : blocked
 
 possibleValuesAt :: Square -> Puzzle -> [Int]
 possibleValuesAt _ (SudokuPuzzle _) = permittedValues
-possibleValuesAt sq (KillerPuzzle rs g) =
-  possibleRegionValues (regionContaining sq rs) g
+possibleValuesAt _ (KillerPuzzle (r:_) _) = nub $ concat $ possibleCombinations r
 
 rowValues :: Int -> Grid -> [Int]
 rowValues row grid = filter (/= emptySquare) $ grid !! row
@@ -233,7 +257,7 @@ regions pattern totals = sortBy sortThem $ map makeRegion (nub $ concat pattern)
   where
     sortThem = foldMap (compare `on`) criteria
     criteria = [length . possibleCombinations, length . squares]
-    makeRegion x = Region sq total combs $ nub $ concat combs
+    makeRegion x = Region sq combs
       where
         sq = squaresContaining x pattern
         total = fromJust $ lookup x totals
