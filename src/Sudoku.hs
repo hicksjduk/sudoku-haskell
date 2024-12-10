@@ -56,7 +56,7 @@ deleteIfPresent :: Eq a => a -> [a] -> Maybe [a]
 deleteIfPresent value xs = deleteAt =<< elemIndex value xs
   where
     deleteAt i = let (before, _:after) = splitAt i xs
-      in Just $ before ++ after
+      in return $ before ++ after
 
 parametersValid :: Bool
 parametersValid
@@ -175,11 +175,10 @@ solveAt square p = concatMap solveUsing $ allowedValues square p
 
 withValueAt :: Square -> Int -> Puzzle -> Puzzle
 withValueAt sq i (SudokuPuzzle g) = SudokuPuzzle $ setValueAt sq i g
-withValueAt sq i (KillerPuzzle rs g) = KillerPuzzle regions $ setValueAt sq i g
+withValueAt sq i (KillerPuzzle (r:rs) g) = KillerPuzzle regions $ setValueAt sq i g
   where 
-    (r:rr) = rs
     nr = r `withoutValue` i
-    regions = if empty nr then rr else nr : rr
+    regions = if empty nr then rs else nr : rs
 
 setValueAt :: Square -> Int -> Grid -> Grid
 setValueAt (row, col) value grid =
