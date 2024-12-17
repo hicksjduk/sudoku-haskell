@@ -28,17 +28,11 @@ type Square = (Int, Int)
 type IntRange = (Int, Int)
 type Box = (IntRange, IntRange)
 
-data RegionData = RegionData {regions :: [Region], index :: [[Region]]} deriving Show
+data Puzzle = SudokuPuzzle Grid | KillerPuzzle [Region] Grid deriving Show
+data Region = Region {squares :: [Square], possibleCombinations :: [[Int]]} deriving (Show, Eq)
 
-regionData :: [Region] -> RegionData
-regionData rs = RegionData rs index
-  where
-    index = map forRow [0..]
-    forRow r = map (forRowAndCol r) [0..]
-    forRowAndCol r c = head $ filter (((r, c) `elem`).squares) rs
-
-data Puzzle = SudokuPuzzle Grid | KillerPuzzle RegionData Grid deriving Show
-data Region = Region {squares :: [Square], total :: Int, possibleCombinations :: [[Int]]} deriving (Show, Eq)
+total :: Region -> Int
+total (Region _ (c:_)) = sum c
 
 parametersValid :: Bool
 parametersValid
@@ -94,7 +88,7 @@ emptyGrid = replicate gridSize $ replicate gridSize emptySquare
 
 validate :: Puzzle -> Either String Puzzle
 validate p@(SudokuPuzzle g) = validateGrid g >> return p
-validate p@(KillerPuzzle (RegionData rs _) _) = validateRegions rs >> return p
+validate p@(KillerPuzzle rs _) = validateRegions rs >> return p
 
 validateGrid :: Grid -> Either String Grid
 validateGrid grid
@@ -144,20 +138,34 @@ valueAt (row, col) grid = grid !! row !! col
 
 emptySquares :: Puzzle -> [Square]
 emptySquares (SudokuPuzzle grid) = squaresContaining emptySquare grid
-emptySquares (KillerPuzzle (RegionData rs _) grid) =
-  concatMap (filter ((== emptySquare) . (`valueAt` grid)) . squares) rs
+emptySquares (KillerPuzzle rs _) = concatMap squares rs
 
 squaresContaining :: Eq a => a -> [[a]] -> [Square]
-squaresContaining v grid = let squares row = map (row,)
+squaresContaining v grid = 
+  let squares row = map (row,)
   in concat $ zipWith squares [0..] $ map (elemIndices v) grid
 
 solveAt :: Square -> Puzzle -> [Grid]
-solveAt square p = let solveUsing value = solve $ withValueAt square value p
+solveAt square p = 
+  let solveUsing value = solve $ withValueAt square value p
   in concatMap solveUsing $ allowedValues square p
 
 withValueAt :: Square -> Int -> Puzzle -> Puzzle
 withValueAt sq i (SudokuPuzzle g) = SudokuPuzzle $ setValueAt sq i g
-withValueAt sq i (KillerPuzzle rd g) = KillerPuzzle rd $ setValueAt sq i g
+withValueAt sq i (KillerPuzzle (r:rs) g) = 
+  let nr = maybe rs (:rs) $ withoutValue i r
+  in KillerPuzzle nr $ setValueAt sq i g
+
+withoutValue :: Int -> Region -> Maybe Region
+withoutValue _ (Region [_] _) = Nothing
+withoutValue i (Region (_:ss) combs) = 
+  let newCombs = mapMaybe (deleteIfPresent i) combs
+  in Just $ Region ss newCombs
+
+deleteIfPresent :: (Eq a) => a -> [a] -> Maybe [a]
+deleteIfPresent i xs = 
+  let ys = delete i xs
+  in if length xs == length ys then Nothing else Just ys
 
 setValueAt :: Square -> Int -> Grid -> Grid
 setValueAt (row, col) value grid =
@@ -177,8 +185,7 @@ allowedValues square@(row, col) p = foldl1 (\\) $ possible : blocked
 
 possibleValuesAt :: Square -> Puzzle -> [Int]
 possibleValuesAt _ (SudokuPuzzle _) = permittedValues
-possibleValuesAt sq p@(KillerPuzzle _ g) =
-  possibleRegionValues (regionContaining sq p) g
+possibleValuesAt _ (KillerPuzzle (r:_) _) = possibleRegionValues r
 
 rowValues :: Int -> Grid -> [Int]
 rowValues row grid = filter (/= emptySquare) $ grid !! row
@@ -220,22 +227,15 @@ totalOutOfRange r = tot < minRegionTotal count || tot > maxRegionTotal count
     count = length $ squares r
     tot = total r
 
-regionContaining :: Square -> Puzzle -> Region
-regionContaining (row, col) (KillerPuzzle (RegionData _ ri) _) = ri !! row !! col
-
-possibleRegionValues :: Region -> Grid -> [Int]
-possibleRegionValues region grid = nub $ concat combs \\ existing
-  where
-    combs = filter (existing `isSubsetOf`) $ possibleCombinations region
-    xs `isSubsetOf` ys = all (`elem` ys) xs
-    existing = filter (/= emptySquare) $ map (`valueAt` grid) $ squares region
+possibleRegionValues :: Region -> [Int]
+possibleRegionValues = nub . concat . possibleCombinations
 
 regionList :: [String] -> [(Char, Int)] -> [Region]
 regionList pattern totals = sortBy sortThem $ map makeRegion (nub $ concat pattern)
   where
     sortThem = foldMap (compare `on`) criteria
     criteria = [length . possibleCombinations, length . squares]
-    makeRegion x = Region sq total combs
+    makeRegion x = Region sq combs
       where
         sq = squaresContaining x pattern
         total = fromJust $ lookup x totals
@@ -252,7 +252,7 @@ regionSize :: Region -> Int
 regionSize = length . squares
 
 toPuzzle :: [String] -> [(Char, Int)] -> Puzzle
-toPuzzle pattern totals = KillerPuzzle (regionData $ regionList pattern totals) emptyGrid
+toPuzzle pattern totals = KillerPuzzle (regionList pattern totals) emptyGrid
 
 -- Weekly 935
 killerPuzzle :: Puzzle
