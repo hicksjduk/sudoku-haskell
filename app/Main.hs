@@ -7,7 +7,7 @@ import Data.Foldable
 main :: IO ()
 main = do
   args <- getArgs
-  putStrLn $ show $ solve $ puzzleSelect $ tail $ toList args
+  putStrLn $ show $ sudoku $ puzzleSelect $ tail $ toList args
 
 puzzleSelect :: [String] -> Puzzle
 puzzleSelect [] = puzzle

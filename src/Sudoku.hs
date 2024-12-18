@@ -88,7 +88,7 @@ emptyGrid = replicate gridSize $ replicate gridSize emptySquare
 
 validate :: Puzzle -> Either String Puzzle
 validate p@(SudokuPuzzle g) = validateGrid g >> return p
-validate p@(KillerPuzzle rs _) = validateRegions rs >> return p
+validate p@(KillerPuzzle rs g) = validateRegions rs g >> return p
 
 validateGrid :: Grid -> Either String Grid
 validateGrid grid
@@ -108,19 +108,22 @@ validateGrid grid
   where
     indices = take gridSize [0..]
 
-validateRegions :: [Region] -> Either String [Region]
-validateRegions rs
+validateRegions :: [Region] -> Grid -> Either String [Region]
+validateRegions rs grid
   | any totalOutOfRange rs =
     Left "Region total out of permitted range"
-  | sum (map total rs) /= (gridSize * sum permittedValues) =
+  | sum (map total rs) /= (gridSize * sum permittedValues) - (sum $ map sum grid) =
     Left "Region totals incorrect"
-  | length sq /= (gridSize * gridSize) =
+  | length sq /= length emptySq =
     Left "Incorrect number of squares in regions"
+  | any (not . (`elem` emptySq)) sq =
+    Left "Square in region is not empty"
   | any indexOutOfRange sq =
     Left "Square index out of range"
   | otherwise = return rs
   where
     sq = concatMap squares rs
+    emptySq = squaresContaining emptySquare grid
     indexOutOfRange (row, col) = outOfRange row || outOfRange col
     outOfRange n = n < 0 || n >= gridSize
 
