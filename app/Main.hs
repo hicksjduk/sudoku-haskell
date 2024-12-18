@@ -3,15 +3,20 @@ module Main (main) where
 import Sudoku
 import System.Environment
 import Data.Foldable
+import Data.Time.Clock
 
 main :: IO ()
 main = do
   args <- getArgs
+  start <- getCurrentTime
   putStrLn $ show $ sudoku $ puzzleSelect $ tail $ toList args
+  end <- getCurrentTime
+  putStrLn $ unwords ["Done in", show $ diffUTCTime end start]
 
 puzzleSelect :: [String] -> Puzzle
 puzzleSelect [] = puzzle
 puzzleSelect ("k":_) = killerPuzzle
+puzzleSelect ("k2":_) = killerPuzzle2
 puzzleSelect ("e":_) = SudokuPuzzle emptyGrid
 puzzleSelect (a:_) = let i = read a :: Int
   in partialSolutions !! i
