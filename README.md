@@ -60,9 +60,10 @@ specified size.
 ## Code structure
 
 The basic function for solving a puzzle of either type is `sudoku`. It returns an error message if 
-the puzzle is invalid or no solution can be found, otherwise the first solution found is returned.
+the puzzle is invalid or no solution can be found, otherwise it invokes `solve` to solve
+the puzzle and the first solution found is returned.
 
-The program uses a straightforward algorithm which tries every possibility to solve the puzzle.
+The `solve` function uses a straightforward algorithm which tries every possibility to solve the puzzle.
 For any given puzzle:
 
 * Find an empty square. If there is no empty square, the puzzle is solved.
@@ -75,8 +76,9 @@ to make the required total.
 puzzle recursively.
 
 The `solve` function returns a list containing
-all the possible solutions for the input grid; each solution is a grid where 
-every square contains a non-zero value.
+all the possible solutions for the input puzzle; each solution is a grid where 
+every square contains a non-zero value that satisfies
+the constraints of the puzzle.
 The `sudoku` function takes the head of the
 returned list; thus evaluation terminates as soon as a solution is found.
 
