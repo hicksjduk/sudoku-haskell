@@ -237,7 +237,7 @@ regionList :: [String] -> [(Char, Int)] -> [Region]
 regionList pattern totals = sortBy sortThem $ map makeRegion (nub $ concat pattern)
   where
     sortThem = foldMap (compare `on`) criteria
-    criteria = [length . possibleCombinations, length . squares]
+    criteria = [length . squares, length . possibleRegionValues]
     makeRegion x = Region sq combs
       where
         sq = squaresContaining x pattern
