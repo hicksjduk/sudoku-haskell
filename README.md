@@ -1,7 +1,7 @@
 # A Haskell Sudoku solver
 
-This repo contains a simple solver for Sudoku puzzles, written in Haskell. It is constructed using the
-`stack` tool.
+This repo contains a simple solver for Sudoku and Killer Sudoku puzzles, written in Haskell. 
+It is constructed using the `stack` tool.
 
 To run the solver, with the base directory of the repo as the current directory type the command 
 `stack run sudoku-exe`. This will solve the puzzle that is defined using the name `puzzle`, which
@@ -34,9 +34,10 @@ squares.
 
 ### Killer Sudoku
 
-A Killer Sudoku puzzle contains a number of regions.
+A Killer Sudoku puzzle is like a Sudoku puzzle, but the information that is used to solve
+the puzzle is supplied not by seeding the grid with values, but by dividing it into regions.
 A region is a collection of
-up to nine (normally contiguous) squares whose values in the solution are all different, and add up
+up to nine squares whose values in the solution are all different, and add up
 to the total associated with the region.
 A region is normally denoted in a printed puzzle by a dotted outline
 enclosing its squares, and a number (its total) above the square in the region that is closest to
