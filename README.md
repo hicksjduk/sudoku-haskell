@@ -20,7 +20,13 @@ puzzle and takes about a second to solve.
 
 ### Sudoku
 
-A Sudoku puzzle is represented by a list of lists of `Int`, which contains the grid of values that
+A Sudoku puzzle consists of a square grid, which is further divided into boxes such that each square
+is in one row, one column and one box. A box contains the same number of squares as a row or a column.
+In a solution, every possible value appears exactly once in each row, each column and each box. A puzzle is
+seeded with a number of values.
+
+Within the solver, a Sudoku puzzle is represented by a list of lists of `Int`, 
+which contains the grid of values that
 must be filled in. Each empty square in the grid contains the value 0; each non-empty square contains
 the relevant value.
 
