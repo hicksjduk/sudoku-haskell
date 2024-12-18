@@ -31,6 +31,11 @@ type Box = (IntRange, IntRange)
 data Puzzle = SudokuPuzzle Grid | KillerPuzzle [Region] Grid deriving Show
 data Region = Region {squares :: [Square], possibleCombinations :: [[Int]]} deriving (Show, Eq)
 
+instance Ord Region where
+  compare = 
+    let criteria = [length . squares, length . possibleRegionValues] 
+    in foldMap (compare `on`) criteria
+
 total :: Region -> Int
 total (Region _ (c:_)) = sum c
 
@@ -234,10 +239,8 @@ possibleRegionValues :: Region -> [Int]
 possibleRegionValues = nub . concat . possibleCombinations
 
 regionList :: [String] -> [(Char, Int)] -> [Region]
-regionList pattern totals = sortBy sortThem $ map makeRegion (nub $ concat pattern)
+regionList pattern totals = sort $ map makeRegion (nub $ concat pattern)
   where
-    sortThem = foldMap (compare `on`) criteria
-    criteria = [length . squares, length . possibleRegionValues]
     makeRegion x = Region sq combs
       where
         sq = squaresContaining x pattern
