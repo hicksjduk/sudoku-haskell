@@ -67,8 +67,9 @@ specified size.
 ## Code structure
 
 The basic function for solving a puzzle of either type is `sudoku`. It returns an error message if 
-the puzzle is invalid or no solution can be found, otherwise it invokes `solve` to solve
-the puzzle and the first solution found is returned.
+the puzzle is invalid, otherwise it invokes `solve` to solve
+the puzzle and the first solution found (if any) is returned. If no solution can be found, an error message is
+returned.
 
 The `solve` function uses a straightforward algorithm which tries every possibility to solve the puzzle.
 For any given puzzle:
