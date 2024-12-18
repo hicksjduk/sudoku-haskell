@@ -21,8 +21,9 @@ puzzle and takes about a second to solve.
 ### Sudoku
 
 A Sudoku puzzle consists of a square grid, which is further divided into boxes such that each square
-is in one row, one column and one box. A box contains the same number of squares as a row or a column.
-In a solution, every possible value appears exactly once in each row, each column and each box. A puzzle is
+is in one box. There are the same number of boxes as there are rows, and
+each box contains the same number of squares as a row.
+In a valid solution, every possible value appears exactly once in each row, each column and each box. A puzzle is
 seeded with a number of values.
 
 Within the solver, a Sudoku puzzle is represented by a list of lists of `Int`, 
