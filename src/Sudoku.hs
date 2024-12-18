@@ -119,6 +119,8 @@ validateRegions rs grid
     Left "Region total out of permitted range"
   | sum (map total rs) /= (gridSize * sum permittedValues) - (sum $ map sum grid) =
     Left "Region totals incorrect"
+  | any sizeOutOfRange rs =
+    Left "Incorrect number of squares in regions"
   | length sq /= length emptySq =
     Left "Incorrect number of squares in regions"
   | any (not . (`elem` emptySq)) sq =
@@ -131,6 +133,8 @@ validateRegions rs grid
     emptySq = squaresContaining emptySquare grid
     indexOutOfRange (row, col) = outOfRange row || outOfRange col
     outOfRange n = n < 0 || n >= gridSize
+    sizeOutOfRange r = let len = length $ squares r
+      in len < 1 || len > gridSize
 
 solve :: Puzzle -> [Grid]
 solve p = case emptySquares p of
