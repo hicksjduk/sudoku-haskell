@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
 module Combine where
 
 combineMinMaxLength :: Int -> Int -> [a] -> [[a]]
