@@ -8,10 +8,10 @@ To run the solver, with the base directory of the repo as the current directory 
 is [the one which was 
 claimed in 2012 to be the hardest Sudoku ever devised](https://abcnews.go.com/blogs/headlines/2012/06/can-you-solve-the-hardest-ever-sudoku).
 
-Alternatively, the following options can be entered to solve other puzzles:
+Alternatively, the following options can be added to the command above to solve other puzzles:
 
 * `k` for the Killer Sudoku puzzle defined using the name `killerPuzzle`. Note that this might take
-a while (about four minutes on my computer), but it will solve the puzzle.
+a while (about four minutes on my computer), but it will complete.
 * `k2` for the Killer Sudoku puzzle defined using the name `killerPuzzle2`. This is a much easier
 puzzle and takes about a second to solve.
 * `e` for an empty Sudoku puzzle (one that is not seeded with any numbers).
@@ -34,19 +34,25 @@ squares.
 
 ### Killer Sudoku
 
-A Killer Sudoku puzzle contains a number regions.which are normally denoted in print by a dotted outline.
+A Killer Sudoku puzzle contains a number of regions.
 A region is a collection of
 up to nine (normally contiguous) squares whose values in the solution are all different, and add up
 to the total associated with the region.
+A region is normally denoted in a printed puzzle by a dotted outline
+enclosing its squares, and a number (its total) above the square in the region that is closest to
+the top left-hand corner of the puzzle.
 
 The input representation of a Killer Sudoku puzzle uses the following structures to define the regions:
 
 * A grid where each square contains a character that represents the region of which the square is part.
-* A lookup table where the key is the character representing each region, and the value is the required
-total of the values in the region.
+* A lookup table (a list of tuples of `Char` and `Int`)
+where the key of each entry is the character representing a region, and the value is the required
+total of the values in the region. There should be one entry for each character that appears in the
+grid.
 
 The regions of a puzzle are validated to ensure that:
 
+* the size of each region (the number of squares it contains) is not less than 1 and not more than 9.
 * the total of each region is not less than the minimum, and not more than the maximum, total for a region of the
 specified size.
 * the totals of all the regions add up to 405, which is the only possible sum of all the values in the grid.
@@ -59,7 +65,7 @@ the puzzle is invalid or no solution can be found, otherwise the first solution 
 The program uses a straightforward algorithm which tries every possibility to solve the puzzle.
 For any given puzzle:
 
-* Find an empty square. If there is no empty square, the current grid is a solution.
+* Find an empty square. If there is no empty square, the puzzle is solved.
 * Determine which values can go into the empty square, because they do
 not appear anywhere in the same row, column or box, and in the case of a Killer Sudoku they also do not
 appear in the same region and are able to combine with those values that are already in the region
