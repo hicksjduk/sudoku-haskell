@@ -12,6 +12,7 @@ import Data.Maybe
 import Data.Function
 import Combine
 import Data.Ord
+import Control.Parallel
 
 permittedValues :: [Int]
 permittedValues = [1..9]
@@ -158,9 +159,15 @@ squaresContaining v grid =
   in concat $ zipWith squares [0..] $ map (elemIndices v) grid
 
 solveAt :: Square -> Puzzle -> [Grid]
-solveAt square p = 
-  let solveUsing value = solve $ withValueAt square value p
-  in concatMap solveUsing $ allowedValues square p
+solveAt square p = solveParallel $ allowedValues square p
+  where 
+    solveParallel [] = []
+    solveParallel vv@(v:vs) 
+      | length vv > chunkSize = let solveOthers = solveParallel vs
+          in par solveOthers $ solveUsing v ++ solveOthers
+      | otherwise = concatMap solveUsing vv
+    solveUsing value = solve $ withValueAt square value p
+    chunkSize = 3
 
 withValueAt :: Square -> Int -> Puzzle -> Puzzle
 withValueAt sq i (SudokuPuzzle g) = SudokuPuzzle $ setValueAt sq i g
