@@ -33,7 +33,7 @@ data Region = Region {squares :: [Square], possibleCombinations :: [[Int]]} deri
 
 instance Ord Region where
   compare = 
-    let criteria = [length . squares, length . possibleRegionValues] 
+    let criteria = [length . squares, length . possibleValues] 
     in foldMap (compare `on`) criteria
 
 total :: Region -> Int
@@ -189,15 +189,15 @@ replaceValueAt index value xs = let (before, _:after) = splitAt index xs
   in before ++ value : after
 
 allowedValues :: Square -> Puzzle -> [Int]
-allowedValues square@(row, col) p = foldl1 (\\) $ possible : blocked
+allowedValues square@(row, col) p = foldl (\\) possible blocked
   where
-    possible = possibleValuesAt square p
+    possible = allPossibleValues p
     blocked = map ($ grid p)
       [rowValues row, colValues col, boxValues $ boxContaining square]
 
-possibleValuesAt :: Square -> Puzzle -> [Int]
-possibleValuesAt _ (SudokuPuzzle _) = permittedValues
-possibleValuesAt _ (KillerPuzzle (r:_) _) = possibleRegionValues r
+allPossibleValues :: Puzzle -> [Int]
+allPossibleValues (SudokuPuzzle _) = permittedValues
+allPossibleValues (KillerPuzzle (r:_) _) = possibleValues r
 
 rowValues :: Int -> Grid -> [Int]
 rowValues row grid = filter (/= emptySquare) $ grid !! row
@@ -239,8 +239,8 @@ totalOutOfRange r = tot < minRegionTotal count || tot > maxRegionTotal count
     count = length $ squares r
     tot = total r
 
-possibleRegionValues :: Region -> [Int]
-possibleRegionValues = nub . concat . possibleCombinations
+possibleValues :: Region -> [Int]
+possibleValues = nub . concat . possibleCombinations
 
 regionList :: [String] -> [(Char, Int)] -> [Region]
 regionList pattern totals = sort $ map makeRegion (nub $ concat pattern)
