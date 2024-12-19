@@ -9,9 +9,13 @@ main :: IO ()
 main = do
   args <- getArgs
   start <- getCurrentTime
-  putStrLn $ show $ sudoku $ puzzleSelect $ tail $ toList args
+  putStrLn $ printRes $ sudoku $ puzzleSelect $ tail $ toList args
   end <- getCurrentTime
   putStrLn $ unwords ["Done in", show $ diffUTCTime end start]
+
+printRes :: Either String Grid -> String
+printRes (Left s) = s
+printRes (Right g) = show g
 
 puzzleSelect :: [String] -> Puzzle
 puzzleSelect [] = puzzle
