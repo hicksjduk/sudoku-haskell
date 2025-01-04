@@ -35,9 +35,9 @@ solve p@(Puzzle _ grid) = case emptySquares p of
 
 solveAt :: Square -> Puzzle -> [Grid]
 solveAt square p = solveParallel $ allowedValues square p
-  where 
+  where
     solveParallel [] = []
-    solveParallel vv@(v:vs) 
+    solveParallel vv@(v:vs)
       | length vv > chunkSize = let solveOthers = solveParallel vs
           in par solveOthers $ solveUsing v ++ solveOthers
       | otherwise = concatMap solveUsing vv
@@ -45,14 +45,23 @@ solveAt square p = solveParallel $ allowedValues square p
     chunkSize = 3
 
 allowedValues :: Square -> Puzzle -> [Int]
-allowedValues sq (Puzzle dims _) = 
+allowedValues sq (Puzzle dims _) =
   let dimsForSquare = filter (sq `inDimension`) dims
   in foldr1 intersect $ map possibleValues dimsForSquare
 
 withValueAt :: Square -> Int -> Puzzle -> Puzzle
-withValueAt sq i (Puzzle dims g) = 
+withValueAt sq i (Puzzle dims g) =
   let newDims = mapMaybe (withoutValueAt sq i) dims
   in Puzzle newDims $ setValueAt sq i g
+
+withoutValueAt :: Square -> Int -> Dimension -> Maybe Dimension
+withoutValueAt sq i d@(Dimension squares combs dimType)
+  | squares == [sq] = Nothing
+  | sq `inDimension` d = Just $ Dimension newSq newCombs dimType
+  | otherwise = Just d
+  where
+    newSq = delete sq squares
+    newCombs = mapMaybe (deleteIfPresent i) combs
 
 data Puzzle = Puzzle [Dimension] Grid deriving Show
 
@@ -69,9 +78,9 @@ data Dimension = Dimension [Square] [[Int]] DimensionType deriving (Eq, Show)
 data DimensionType = RowD Int | ColumnD Int | BoxD Box | RegionD deriving (Eq, Show)
 
 instance Ord Dimension where
-  compare = 
-    let criteria = [length . emptySquares, length . possibleValues] 
-    in foldMap (compare `on`) criteria 
+  compare =
+    let criteria = [length . emptySquares, length . possibleValues]
+    in foldMap (compare `on`) criteria
 
 possibleValues :: Dimension -> [Int]
 possibleValues (Dimension _ [vals] _) = vals
@@ -92,7 +101,7 @@ dimension squares grid = Dimension emptySquares [comb]
     comb = permittedValues \\ map snd notEmpty
 
 rowDimension :: Int -> Grid -> Dimension
-rowDimension row grid = 
+rowDimension row grid =
   let sq = map (row,) $ take gridSize [0..]
   in dimension sq grid $ RowD row
 
@@ -100,7 +109,7 @@ inRow :: Square -> Int -> Bool
 inRow (row, _) = (== row)
 
 columnDimension :: Int -> Grid -> Dimension
-columnDimension col grid = 
+columnDimension col grid =
   let sq = map (, col) $ take gridSize [0..]
   in dimension sq grid $ ColumnD col
 
@@ -108,7 +117,7 @@ inColumn :: Square -> Int -> Bool
 inColumn (_, col) = (== col)
 
 boxDimension :: Box -> Grid -> Dimension
-boxDimension box@((minRow, maxRow), (minCol, maxCol)) grid = 
+boxDimension box@((minRow, maxRow), (minCol, maxCol)) grid =
   let sq = [(r, c) | r <- [minRow .. maxRow], c <- [minCol .. maxCol]]
   in dimension sq grid $ BoxD box
 
@@ -118,18 +127,12 @@ inBox :: Square -> Box -> Bool
 inRange :: Int -> IntRange -> Bool
 inRange v (minVal, maxVal) = v >= minVal && v <= maxVal
 
-regionDimension :: Region -> Dimension
-regionDimension (Region sq possibleCombs) = Dimension sq possibleCombs RegionD
-
-data Region = Region {squares :: [Square], possibleCombinations :: [[Int]]} deriving (Show, Eq)
-
 puzzleFrom :: [Dimension] -> Grid -> Puzzle
 puzzleFrom dims = Puzzle (sort dims)
 
 standardDimensions :: Grid -> [Dimension]
-standardDimensions grid = dims
-  where 
-    dims = concat [rowDims, colDims, boxDims]
+standardDimensions grid = concat [rowDims, colDims, boxDims]
+  where
     rowDims = map (`rowDimension` grid) $ take gridSize [0..]
     colDims = map (`columnDimension` grid) $ take gridSize [0..]
     boxDims = map (`boxDimension` grid) $ boxes
@@ -137,14 +140,11 @@ standardDimensions grid = dims
 sudokuPuzzle :: Grid -> Puzzle
 sudokuPuzzle grid = puzzleFrom (standardDimensions grid) grid
 
-killerPuzzle :: [Region] -> Puzzle
-killerPuzzle regions = Puzzle dims emptyGrid
-  where
-    dims = killerDims ++ standardDimensions emptyGrid
-    killerDims = map regionDimension regions
+size :: Dimension -> Int
+size (Dimension sq _ _) = length sq
 
--- total :: Region -> Int
--- total (Region _ (c:_)) = sum c
+total :: Dimension -> Int
+total (Dimension _ (c:_) _) = sum c
 
 parametersValid :: Bool
 parametersValid
@@ -176,6 +176,9 @@ boxes = (,) <$> rowRanges <*> colRanges
     rowRanges = ranges rowsPerBox
     colRanges = ranges colsPerBox
 
+valueAt :: Square -> Grid -> Int
+valueAt (row, col) grid = grid !! row !! col
+
 puzzle :: Puzzle
 puzzle = sudokuPuzzle
          [[8,0,0,0,0,0,0,0,0],
@@ -192,50 +195,59 @@ emptyGrid :: Grid
 emptyGrid = replicate gridSize $ replicate gridSize emptySquare
 
 validate :: Puzzle -> Either String Puzzle
-validate = Right
--- validate p@(SudokuPuzzle g) = validateGrid g >> return p
--- validate p@(KillerPuzzle rs g) = validateRegions rs g >> return p
+validate p@(Puzzle dims grid) = validateGrid grid >>= validateRegions (filter isRegion dims) >> return p
 
--- validateGrid :: Grid -> Either String Grid
--- validateGrid grid
---   | length grid /= gridSize =
---     Left "Wrong number of rows"
---   | any ((/= gridSize) . length) grid =
---     Left "Wrong number of columns"
---   | any (any (`notElem` emptySquare : permittedValues)) grid =
---     Left "Invalid cell value"
---   | any (hasDuplicates . (`rowValues` grid)) indices =
---     Left "Row contains duplicate value(s)"
---   | any (hasDuplicates . (`colValues` grid)) indices =
---     Left "Column contains duplicate value(s)"
---   | any (hasDuplicates . (`boxValues` grid)) boxes =
---     Left "Box contains duplicate value(s)"
---   | otherwise = return grid
---   where
---     indices = take gridSize [0..]
+validateGrid :: Grid -> Either String Grid
+validateGrid grid
+  | length grid /= gridSize =
+    Left "Wrong number of rows"
+  | any ((/= gridSize) . length) grid =
+    Left "Wrong number of columns"
+  | any (any (`notElem` emptySquare : permittedValues)) grid =
+    Left "Invalid cell value"
+  | any (hasDuplicates . rowValues) indices =
+    Left "Row contains duplicate value(s)"
+  | any (hasDuplicates . colValues) indices =
+    Left "Column contains duplicate value(s)"
+  | any (hasDuplicates . boxValues) boxes =
+    Left "Box contains duplicate value(s)"
+  | otherwise = return grid
+  where
+    indices = take gridSize [0..]
+    rowValues row = filter (/= emptySquare) $ grid !! row
+    colValues col = filter (/= emptySquare) $ map (!! col) grid
+    boxValues (rows, cols) = filter (/= emptySquare) values
+      where
+        values = concatMap (slice cols) $ slice rows grid
+        slice (x, y) xs = drop x $ take (y-1) xs
 
--- validateRegions :: [Region] -> Grid -> Either String [Region]
--- validateRegions rs grid
---   | any totalOutOfRange rs =
---     Left "Region total out of permitted range"
---   | sum (map total rs) /= (gridSize * sum permittedValues) - (sum $ map sum grid) =
---     Left "Region totals incorrect"
---   | any sizeOutOfRange rs =
---     Left "Incorrect number of squares in regions"
---   | length sq /= length emptySq =
---     Left "Incorrect number of squares in regions"
---   | any (not . (`elem` emptySq)) sq =
---     Left "Square in region is not empty"
---   | any indexOutOfRange sq =
---     Left "Square index out of range"
---   | otherwise = return rs
---   where
---     sq = concatMap squares rs
---     emptySq = squaresContaining emptySquare grid
---     indexOutOfRange (row, col) = outOfRange row || outOfRange col
---     outOfRange n = n < 0 || n >= gridSize
---     sizeOutOfRange r = let len = length $ squares r
---       in len < 1 || len > gridSize
+validateRegions :: [Dimension] -> Grid -> Either String [Dimension]
+validateRegions [] _ = return []
+validateRegions ds grid
+  | any totalOutOfRange ds =
+    Left "Region total out of permitted range"
+  | sum (map total ds) /= (gridSize * sum permittedValues) - sum (map sum grid) =
+    Left "Region totals incorrect"
+  | any sizeOutOfRange ds =
+    Left "Incorrect number of squares in regions"
+  | length sq /= length emptySq =
+    Left "Incorrect number of squares in regions"
+  | not (all (`elem` emptySq) sq) =
+    Left "Square in region is not empty"
+  | any indexOutOfRange sq =
+    Left "Square index out of range"
+  | otherwise = return ds
+  where
+    sq = concatMap emptySquares ds
+    emptySq = squaresContaining emptySquare grid
+    indexOutOfRange (row, col) = outOfRange row || outOfRange col
+    outOfRange n = n < 0 || n >= gridSize
+    sizeOutOfRange d = let len = size d
+      in len < 1 || len > gridSize
+
+isRegion :: Dimension -> Bool
+isRegion (Dimension _ _ RegionD) = True
+isRegion Dimension {} = False
 
 class SquareContainer c where
   emptySquares :: c -> [Square]
@@ -247,24 +259,17 @@ instance SquareContainer Dimension where
   emptySquares (Dimension sq _ _) = sq
 
 squaresContaining :: Eq a => a -> [[a]] -> [Square]
-squaresContaining v grid = 
+squaresContaining v grid =
   let squares row = map (row,)
   in concat $ zipWith squares [0..] $ map (elemIndices v) grid
 
 replaceOrDeleteValueAt :: Int -> Maybe a -> [a] -> [a]
-replaceOrDeleteValueAt i v xs = 
+replaceOrDeleteValueAt i v xs =
   let (before, _:after) = splitAt i xs
   in before ++ maybe after (:after) v
 
-withoutValueAt :: Square -> Int -> Dimension -> Maybe Dimension
-withoutValueAt _ _ (Dimension [_] _ _) = Nothing
-withoutValueAt sq i (Dimension squares combs dimType) = Just $ Dimension newSq newCombs dimType
-  where
-    newSq = delete sq squares
-    newCombs = mapMaybe (deleteIfPresent i) combs
-  
 deleteIfPresent :: (Eq a) => a -> [a] -> Maybe [a]
-deleteIfPresent i xs = 
+deleteIfPresent i xs =
   let ys = delete i xs
   in if length xs == length ys then Nothing else Just ys
 
@@ -277,134 +282,133 @@ replaceValueAt :: Int -> a -> [a] -> [a]
 replaceValueAt index value xs = let (before, _:after) = splitAt index xs
   in before ++ value : after
 
--- minRegionTotal :: Int -> Int
--- minRegionTotal count = cache !! count
---   where
---     cache = map mrt [0..]
---     mrt count = (sum . take count . sort) permittedValues
+minRegionTotal :: Int -> Int
+minRegionTotal count = cache !! count
+  where
+    cache = map mrt [0..]
+    mrt count = (sum . take count . sort) permittedValues
 
--- maxRegionTotal :: Int -> Int
--- maxRegionTotal count = cache !! count
---   where
---     cache = map mrt [0..]
---     mrt count = (sum . take count . sortBy (comparing Data.Ord.Down)) permittedValues
+maxRegionTotal :: Int -> Int
+maxRegionTotal count = cache !! count
+  where
+    cache = map mrt [0..]
+    mrt count = (sum . take count . sortBy (comparing Data.Ord.Down)) permittedValues
 
--- totalOutOfRange :: Region -> Bool
--- totalOutOfRange r = tot < minRegionTotal count || tot > maxRegionTotal count
---   where
---     count = length $ squares r
---     tot = total r
+totalOutOfRange :: Dimension -> Bool
+totalOutOfRange d = tot < minRegionTotal count || tot > maxRegionTotal count
+  where
+    count = size d
+    tot = total d
 
--- regionList :: [String] -> [(Char, Int)] -> [Region]
--- regionList pattern totals = sort $ map makeRegion (nub $ concat pattern)
---   where
---     makeRegion x = Region sq combs
---       where
---         sq = squaresContaining x pattern
---         total = fromJust $ lookup x totals
---         combs = combinations (length sq) total
+regionDimensions :: [String] -> [(Char, Int)] -> [Dimension]
+regionDimensions pattern totals = sort $ map makeRegion (nub $ concat pattern)
+  where
+    makeRegion x = Dimension sq combs RegionD
+      where
+        sq = squaresContaining x pattern
+        total = fromJust $ lookup x totals
+        combs = combinations (length sq) total
 
--- combinations :: Int -> Int -> [[Int]]
--- combinations size total = cache !! size !! total
---   where
---     cache = map cacheBy [0..]
---     cacheBy s = map (combs s) [0..]
---     combs s t = filter ((== t) . sum) $ combineExactLength s permittedValues
+combinations :: Int -> Int -> [[Int]]
+combinations size total = cache !! size !! total
+  where
+    cache = map cacheBy [0..]
+    cacheBy s = map (combs s) [0..]
+    combs s t = filter ((== t) . sum) $ combineExactLength s permittedValues
 
--- regionSize :: Region -> Int
--- regionSize = length . squares
+killerPuzzle :: [String] -> [(Char, Int)] -> Puzzle
+killerPuzzle pattern totals =
+  let regionDims = regionDimensions pattern totals
+  in puzzleFrom (regionDims ++ standardDimensions emptyGrid) emptyGrid
 
--- toPuzzle :: [String] -> [(Char, Int)] -> Puzzle
--- toPuzzle pattern totals = KillerPuzzle (regionList pattern totals) emptyGrid
+-- Weekly 935
+killer1 :: Puzzle
+killer1 = killerPuzzle
+  [
+    "aabbcddee",
+    "affcccgge",
+    "ffcchccgg",
+    "fijjhjjkg",
+    "iiljjjmkk",
+    "inlooompk",
+    "inooqoopk",
+    "nnorqsopp",
+    "nttrqsuup"
+  ]    [
+    ('a', 14),
+    ('b', 8),
+    ('c', 44),
+    ('d', 15),
+    ('e', 12),
+    ('f', 29),
+    ('g', 26),
+    ('h', 4),
+    ('i', 25),
+    ('j', 36),
+    ('k', 17),
+    ('l', 10),
+    ('m', 7),
+    ('n', 25),
+    ('o', 45),
+    ('p', 35),
+    ('q', 18),
+    ('r', 9),
+    ('s', 10),
+    ('t', 12),
+    ('u', 4)
+  ]
 
--- -- Weekly 935
--- killerPuzzle :: Puzzle
--- killerPuzzle = toPuzzle
---   [
---     "aabbcddee",
---     "affcccgge",
---     "ffcchccgg",
---     "fijjhjjkg",
---     "iiljjjmkk",
---     "inlooompk",
---     "inooqoopk",
---     "nnorqsopp",
---     "nttrqsuup"
---   ]    [
---     ('a', 14),
---     ('b', 8),
---     ('c', 44),
---     ('d', 15),
---     ('e', 12),
---     ('f', 29),
---     ('g', 26),
---     ('h', 4),
---     ('i', 25),
---     ('j', 36),
---     ('k', 17),
---     ('l', 10),
---     ('m', 7),
---     ('n', 25),
---     ('o', 45),
---     ('p', 35),
---     ('q', 18),
---     ('r', 9),
---     ('s', 10),
---     ('t', 12),
---     ('u', 4)
---   ]
-
--- -- Daily 6617
--- killerPuzzle2 :: Puzzle
--- killerPuzzle2 = toPuzzle
---   [
---     "aabbcddef",
---     "gghcciief",
---     "jjhklmnno",
---     "pqqklmrro",
---     "psstttuuv",
---     "wxxyz122v",
---     "w33yz1455",
---     "6788994AA",
---     "67BB9CCDD"
---   ]    [
---     ('a', 14),
---     ('b', 8),
---     ('c', 16),
---     ('d', 10),
---     ('e', 9),
---     ('f', 13),
---     ('g', 7),
---     ('h', 11),
---     ('i', 9),
---     ('j', 10),
---     ('k', 9),
---     ('l', 10),
---     ('m', 12),
---     ('n', 11),
---     ('o', 7),
---     ('p', 8),
---     ('q', 10),
---     ('r', 11),
---     ('s', 12),
---     ('t', 11),
---     ('u', 16),
---     ('v', 4),
---     ('w', 10),
---     ('x', 9),
---     ('y', 17),
---     ('z', 6),
---     ('1', 7),
---     ('2', 12),
---     ('3', 9),
---     ('4', 11),
---     ('5', 8),
---     ('6', 16),
---     ('7', 10),
---     ('8', 5),
---     ('9', 19),
---     ('A', 11),
---     ('B', 11),
---     ('C', 4),
---     ('D', 12)
---   ]
+-- Daily 6617
+killer2 :: Puzzle
+killer2 = killerPuzzle
+  [
+    "aabbcddef",
+    "gghcciief",
+    "jjhklmnno",
+    "pqqklmrro",
+    "psstttuuv",
+    "wxxyz122v",
+    "w33yz1455",
+    "6788994AA",
+    "67BB9CCDD"
+  ]    [
+    ('a', 14),
+    ('b', 8),
+    ('c', 16),
+    ('d', 10),
+    ('e', 9),
+    ('f', 13),
+    ('g', 7),
+    ('h', 11),
+    ('i', 9),
+    ('j', 10),
+    ('k', 9),
+    ('l', 10),
+    ('m', 12),
+    ('n', 11),
+    ('o', 7),
+    ('p', 8),
+    ('q', 10),
+    ('r', 11),
+    ('s', 12),
+    ('t', 11),
+    ('u', 16),
+    ('v', 4),
+    ('w', 10),
+    ('x', 9),
+    ('y', 17),
+    ('z', 6),
+    ('1', 7),
+    ('2', 12),
+    ('3', 9),
+    ('4', 11),
+    ('5', 8),
+    ('6', 16),
+    ('7', 10),
+    ('8', 5),
+    ('9', 19),
+    ('A', 11),
+    ('B', 11),
+    ('C', 4),
+    ('D', 12)
+  ]
