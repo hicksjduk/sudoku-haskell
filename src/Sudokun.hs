@@ -65,10 +65,22 @@ withoutValueAt sq i d@(Dimension squares combs dimType)
 
 data Puzzle = Puzzle [Dimension] Grid deriving Show
 
-dimensionsByType :: Puzzle -> [[Dimension]]
-dimensionsByType (Puzzle dims _) =
-  let sameType d1 d2 = typeCode d1 == typeCode d2
-  in groupBy sameType $ sortBy (compare `on` typeCode) dims
+data DimensionData = DimensionData Int Dimension deriving (Eq, Show)
+
+instance Ord DimensionData where
+  compare = compare `on` typeCode
+
+dimensionsByType :: Puzzle -> [[DimensionData]]
+dimensionsByType (Puzzle dims _) = groupBy sameType $ sortBy (compare `on` typeCode) dds
+  where
+    sameType d1 d2 = typeCode d1 == typeCode d2
+    dds = zipWith DimensionData [0..] dims
+
+typeCode :: DimensionData -> Char
+typeCode (DimensionData _(Dimension _ _ (RowD _))) = 'R'
+typeCode (DimensionData _(Dimension _ _ (ColumnD _))) = 'C'
+typeCode (DimensionData _(Dimension _ _ (BoxD _))) = 'B'
+typeCode (DimensionData _(Dimension _ _ RegionD)) = 'G'
 
 type Grid = [[Int]]
 
@@ -79,12 +91,6 @@ type IntRange = (Int, Int)
 type Box = (IntRange, IntRange)
 
 data Dimension = Dimension [Square] [[Int]] DimensionType deriving (Eq, Show)
-
-typeCode :: Dimension -> Char
-typeCode (Dimension _ _ (RowD _)) = 'R'
-typeCode (Dimension _ _ (ColumnD _)) = 'C'
-typeCode (Dimension _ _ (BoxD _)) = 'B'
-typeCode (Dimension _ _ RegionD) = 'R'
 
 data DimensionType = RowD Int | ColumnD Int | BoxD Box | RegionD deriving (Eq, Show)
 
