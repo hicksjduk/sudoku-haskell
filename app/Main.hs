@@ -1,9 +1,14 @@
+{-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+{-# OPTIONS_GHC -Wno-compat-unqualified-imports #-}
+
 module Main (main) where
 
 import Sudoku
 import System.Environment
 import Data.Foldable
 import Data.Time.Clock
+import Data.List
 
 main :: IO ()
 main = do
@@ -19,9 +24,9 @@ printRes (Right g) = show g
 
 puzzleSelect :: [String] -> Puzzle
 puzzleSelect [] = puzzle
-puzzleSelect ("k":_) = killerPuzzle
-puzzleSelect ("k2":_) = killerPuzzle2
-puzzleSelect ("e":_) = SudokuPuzzle emptyGrid
+puzzleSelect ("k":_) = killer1
+puzzleSelect ("k2":_) = killer2
+puzzleSelect ("e":_) = sudokuPuzzle emptyGrid
 puzzleSelect (a:_) = let i = read a :: Int
   in partialSolutions !! i
 
@@ -38,6 +43,10 @@ solution =
      [5,4,8,6,9,2,3,1,7]]
 
 partialSolutions :: [Puzzle]
-partialSolutions = let nextOne sq = withValueAt sq (valueAt sq solution)
-  in scanr nextOne killerPuzzle $ reverse $ emptySquares killerPuzzle
+partialSolutions = reverse $ unfoldr nextOne killer1
+  where
+    nextOne p = case emptySquareData p of
+      [] -> Nothing
+      (sd@(SquareData sq _):_) -> 
+        return (p, withValueAt sd (valueAt sq solution) p)
     
