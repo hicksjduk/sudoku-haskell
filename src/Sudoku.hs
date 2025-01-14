@@ -73,8 +73,11 @@ instance Show DimensionData where
 type ValueRemover = (Int -> [Dimension])
 
 removeValue :: [Dimension] -> Int -> Square -> Int -> [Dimension]
-removeValue dims index sq value = if index == 0 then newDims else sort newDims
+removeValue dims index sq value = if index == 0 then newDims else sortedNewDims
   where
+    sortedNewDims = 
+      let (left, right) = splitAt (index + 1) newDims 
+      in sort left ++ right
     newDim = withoutValueAt sq value $ dims !! index
     newDims = replaceOrDeleteValueAt index newDim dims
 
