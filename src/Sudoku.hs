@@ -45,17 +45,15 @@ solveAt square p = solveParallel $ allowedValues square
     chunkSize = 3
 
 allowedValues :: SquareData -> [Int]
-allowedValues (SquareData _ dims) = 
-  let possibles (DimensionData _ d) = possibleValues d
+allowedValues (SquareData _ dims) =
+  let possibles (DimensionData d _) = possibleValues d
   in foldr1 intersect $ map possibles dims
-  
+
 withValueAt :: SquareData -> Int -> Puzzle -> Puzzle
-withValueAt (SquareData sq sqDims) v (Puzzle dims g) = Puzzle newDims $ setValueAt sq v g
+withValueAt (SquareData sq sqDims) v (Puzzle _ g) = Puzzle newDims $ setValueAt sq v g
   where
-    newDims = foldr updateDims dims sqDims
-    updateDims (DimensionData i d) ds = 
-      let updatedDim = withoutValueAt sq v d
-      in replaceOrDeleteValueAt i updatedDim ds
+    newDims = map updateDims sqDims
+    updateDims (DimensionData _ valueRemover) = valueRemover v
 
 withoutValueAt :: Square -> Int -> Dimension -> Maybe Dimension
 withoutValueAt _ _ (Dimension [_] _ _) = Nothing
@@ -65,24 +63,29 @@ withoutValueAt sq v (Dimension squares combs dimType) =
     newSq = delete sq squares
     newCombs = mapMaybe (deleteIfPresent v) combs
 
-data Puzzle = Puzzle [Dimension] Grid deriving Show
+data Puzzle = Puzzle [[Dimension]] Grid deriving Show
 
-data DimensionData = DimensionData Int Dimension deriving (Eq, Show)
+data DimensionData = DimensionData Dimension ValueRemover
 
-instance Ord DimensionData where
-  compare (DimensionData i1 _) (DimensionData i2 _) = compare i1 i2
+instance Show DimensionData where
+  show (DimensionData d _) = show d
 
-dimensionsByType :: Puzzle -> [[DimensionData]]
-dimensionsByType (Puzzle dims _) = groupBy sameType $ sortBy (compare `on` typeCode) dds
+type ValueRemover = (Int -> [Dimension])
+
+removeValue :: [Dimension] -> Int -> Square -> Int -> [Dimension]
+removeValue dims index sq value = if index == 0 then newDims else sort newDims
   where
-    sameType d1 d2 = typeCode d1 == typeCode d2
-    dds = zipWith DimensionData [0..] dims
+    newDim = withoutValueAt sq value $ dims !! index
+    newDims = replaceOrDeleteValueAt index newDim dims
 
-typeCode :: DimensionData -> Char
-typeCode (DimensionData _(Dimension _ _ (RowD _))) = 'R'
-typeCode (DimensionData _(Dimension _ _ (ColumnD _))) = 'C'
-typeCode (DimensionData _(Dimension _ _ (BoxD _))) = 'B'
-typeCode (DimensionData _(Dimension _ _ RegionD)) = 'G'
+-- instance Ord DimensionData where
+--   compare (DimensionData i1 _) (DimensionData i2 _) = compare i1 i2
+
+-- typeCode :: DimensionData -> Char
+-- typeCode (DimensionData _(Dimension _ _ (RowD _))) = 'R'
+-- typeCode (DimensionData _(Dimension _ _ (ColumnD _))) = 'C'
+-- typeCode (DimensionData _(Dimension _ _ (BoxD _))) = 'B'
+-- typeCode (DimensionData _(Dimension _ _ RegionD)) = 'G'
 
 type Grid = [[Int]]
 
@@ -149,11 +152,11 @@ inBox :: Square -> Box -> Bool
 inRange :: Int -> IntRange -> Bool
 inRange v (minVal, maxVal) = v >= minVal && v <= maxVal
 
-puzzleFrom :: [Dimension] -> Grid -> Puzzle
-puzzleFrom dims = Puzzle (sort dims)
+puzzleFrom :: [[Dimension]] -> Grid -> Puzzle
+puzzleFrom dims = Puzzle $ map sort dims
 
-standardDimensions :: Grid -> [Dimension]
-standardDimensions grid = concat [rowDims, colDims, boxDims]
+standardDimensions :: Grid -> [[Dimension]]
+standardDimensions grid = [rowDims, colDims, boxDims]
   where
     rowDims = map (`rowDimension` grid) $ take gridSize [0..]
     colDims = map (`columnDimension` grid) $ take gridSize [0..]
@@ -217,7 +220,9 @@ emptyGrid :: Grid
 emptyGrid = replicate gridSize $ replicate gridSize emptySquare
 
 validate :: Puzzle -> Either String Puzzle
-validate p@(Puzzle dims grid) = validateGrid grid >>= validateRegions (filter isRegion dims) >> return p
+validate p@(Puzzle dimsByType grid) = 
+  let regionDims = concat $ filter (isRegion . head) dimsByType
+  in validateGrid grid >>= validateRegions regionDims >> return p
 
 validateGrid :: Grid -> Either String Grid
 validateGrid grid
@@ -271,17 +276,22 @@ isRegion :: Dimension -> Bool
 isRegion (Dimension _ _ RegionD) = True
 isRegion Dimension {} = False
 
-data SquareData = SquareData Square [DimensionData] deriving (Eq, Show)
+data SquareData = SquareData Square [DimensionData] deriving (Show)
 
 emptySquareData :: Puzzle -> [SquareData]
-emptySquareData p = if null dimsByType then [] else 
-  map squareData $ concatMap empties $ head dimsByType
+emptySquareData (Puzzle dimsByType _) = map squareData emptySq
   where
-    dimsByType = dimensionsByType p
-    squareData sq = SquareData sq $ sort $ containingDimensions sq
-    containingDimensions sq = mapMaybe (find (dimContains sq)) dimsByType
-    dimContains sq (DimensionData _ dim) = sq `inDimension` dim
-    empties (DimensionData _ d) = emptySquares d
+    squareData sq = SquareData sq $ containingDimensionData sq dimsByType
+    emptySq = concatMap empties $ sort $ map head $ filter (not . null) dimsByType
+    empties (Dimension sq _ _) = sq
+
+containingDimensionData :: Square -> [[Dimension]] -> [DimensionData]
+containingDimensionData sq dimsByType = containingDims
+  where
+    containingDims = mapMaybe (find containsSquare . dimData) dimsByType
+    dimData dimensionsOfType = zipWith (dimensionData dimensionsOfType) dimensionsOfType [0..]
+    dimensionData dims dim index = DimensionData dim $ removeValue dims index sq
+    containsSquare (DimensionData dim _) = sq `inDimension` dim
 
 squaresContaining :: Eq a => a -> [[a]] -> [Square]
 squaresContaining v grid =
@@ -344,7 +354,7 @@ combinations size total = cache !! size !! total
 killerPuzzle :: [String] -> [(Char, Int)] -> Puzzle
 killerPuzzle pattern totals =
   let regionDims = regionDimensions pattern totals
-  in puzzleFrom (regionDims ++ standardDimensions emptyGrid) emptyGrid
+  in puzzleFrom (regionDims : standardDimensions emptyGrid) emptyGrid
 
 -- Weekly 935
 killer1 :: Puzzle
