@@ -32,15 +32,18 @@ type IntRange = (Int, Int)
 type Box = (IntRange, IntRange)
 
 data Dimension = Dimension [Square] [[Int]] DimensionType deriving (Eq, Show)
+
 instance Ord Dimension where
   compare =
     let criteria = [length . emptySquares, length . possibleValues]
     in foldMap (compare `on`) criteria
+
 data DimensionType = RowD Int | ColumnD Int | BoxD Box | RegionD deriving (Eq, Show)
 
 data SquareData = SquareData Square [DimensionData] deriving (Show)
 
 data DimensionData = DimensionData Dimension ValueRemover
+
 instance Show DimensionData where
   show (DimensionData d _) = show d
 
@@ -119,10 +122,12 @@ withoutValueAt sq v (Dimension emptySquares combs dimType) =
     newCombs = mapMaybe (deleteIfPresent v) combs
 
 removeValue :: [Dimension] -> Int -> Square -> Int -> [Dimension]
-removeValue dims index sq value = if index == 0 then newDims else sortedNewDims
+removeValue dims index sq value = sortedNewDims index newDim
   where
-    sortedNewDims = 
-      let (left, right) = splitAt (index + 1) newDims 
+    sortedNewDims 0 _ = newDims
+    sortedNewDims _ Nothing = newDims
+    sortedNewDims i _ =
+      let (left, right) = splitAt (i + 1) newDims 
       in sort left ++ right
     newDim = withoutValueAt sq value $ dims !! index
     newDims = replaceOrDeleteValueAt index newDim dims
