@@ -20,9 +20,7 @@ main = do
 
 printRes :: Either String Grid -> String
 printRes (Left s) = s
-printRes (Right g) = 
-  let rowData = (unwords . (map show))
-  in unlines $ map rowData g
+printRes (Right g) = unlines $ map (unwords . (map show)) g
 
 puzzleSelect :: [String] -> Puzzle
 puzzleSelect [] = puzzle
