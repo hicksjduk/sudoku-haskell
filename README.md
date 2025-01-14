@@ -6,14 +6,16 @@ It is constructed using the `stack` tool.
 To run the solver, with the base directory of the repo as the current directory type the command 
 `stack run sudoku`. This will solve the puzzle that is defined using the name `puzzle`, which
 is [the one which was 
-claimed in 2012 to be the hardest Sudoku ever devised](https://abcnews.go.com/blogs/headlines/2012/06/can-you-solve-the-hardest-ever-sudoku).
+claimed in 2012 to be the hardest Sudoku ever devised](https://abcnews.go.com/blogs/headlines/2012/06/can-you-solve-the-hardest-ever-sudoku). On my
+computer, it takes about a third of a second to solve
+this puzzle.
 
 Alternatively, the following options can be added to the command above to solve other puzzles:
 
 * `k` for the Killer Sudoku puzzle defined using the name `killerPuzzle`. Note that this might take
-a while (about four minutes on my computer), but it will complete.
+a while (just under a minute on my computer), but it will complete.
 * `k2` for the Killer Sudoku puzzle defined using the name `killerPuzzle2`. This is a much easier
-puzzle and takes about a second to solve.
+puzzle and takes about two seconds to solve.
 * `e` for an empty Sudoku puzzle (one that is not seeded with any numbers).
 
 ## Puzzle types
@@ -65,6 +67,22 @@ The regions of a puzzle are validated to ensure that:
 specified size.
 * the totals of all the regions add up to 405, which is the only possible sum of all the values in the grid.
 
+## Data structures
+
+The basic unit of information that is used to solve a puzzle is the `Dimension`. A dimension is a set of squares
+which all have to contain different values in the solution; each row, column, box and (if appropriate) region is a
+dimension. At any given stage in the solution of a puzzle, a dimension contains a list of its empty squares, and
+a list of the combinations of values that can appear in those empty squares.
+
+A `Puzzle` contains a list of lists of `Dimensions`, with the dimensions being grouped by type 
+(row, column, box, region). The grouping by type means (in particular) that it is much more efficient 
+to search for the dimensions that contain a particular square, since we know that a square only appears
+in one dimension of each type. Each list of dimensions of a particular type is sorted in ascending order
+of (a) the number of empty squares and (b) the number of possible values; and, when determining which
+dimension to take an empty square from, the heads of the lists are sorted in the same order, so that
+the dimension that is processed is the one with the fewest possible combinations of empty squares and
+possible values.
+
 ## Code structure
 
 The basic function for solving a puzzle of either type is `sudoku`. It returns an error message if 
@@ -76,10 +94,8 @@ The `solve` function uses a straightforward algorithm which tries every possibil
 For any given puzzle:
 
 * Find an empty square. If there is no empty square, the puzzle is solved.
-* Determine which values can go into the empty square, because they do
-not appear anywhere in the same row, column or box, and in the case of a Killer Sudoku they also do not
-appear in the same region and are able to combine with those values that are already in the region
-to make the required total.
+* Determine which values can go into the empty square, A value can only go into the square if 
+it is one of the possible values in every dimension that contains the square.
 * For each such value, make a copy of the puzzle where the 
 0 at the relevant position in the source grid is replaced with that value, and solve the revised 
 puzzle recursively.
