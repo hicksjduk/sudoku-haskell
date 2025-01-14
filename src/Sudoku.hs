@@ -81,15 +81,6 @@ removeValue dims index sq value = if index == 0 then newDims else sortedNewDims
     newDim = withoutValueAt sq value $ dims !! index
     newDims = replaceOrDeleteValueAt index newDim dims
 
--- instance Ord DimensionData where
---   compare (DimensionData i1 _) (DimensionData i2 _) = compare i1 i2
-
--- typeCode :: DimensionData -> Char
--- typeCode (DimensionData _(Dimension _ _ (RowD _))) = 'R'
--- typeCode (DimensionData _(Dimension _ _ (ColumnD _))) = 'C'
--- typeCode (DimensionData _(Dimension _ _ (BoxD _))) = 'B'
--- typeCode (DimensionData _(Dimension _ _ RegionD)) = 'G'
-
 type Grid = [[Int]]
 
 type Square = (Int, Int)
