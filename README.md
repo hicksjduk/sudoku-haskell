@@ -52,13 +52,10 @@ A region is normally denoted in a printed puzzle by a dotted outline
 enclosing its squares, and a number (its total) above the square in the region that is closest to
 the top left-hand corner of the puzzle.
 
-The input representation of a Killer Sudoku puzzle uses the following structures to define the regions:
-
-* A grid where each square contains a character that represents the region of which the square is part.
-* A lookup table (a list of tuples of `Char` and `Int`)
-where the key of each entry is the character representing a region, and the value is the required
-total of the values in the region. There should be one entry for each character that appears in the
-grid.
+In the input representation of a Killer Sudoku puzzle, each row of the grid is represented by a tuple containing
+a `String` and a list of `Int`. In the string, each square in the row is represented by a character which uniquely
+identifies the region to which the square belongs. The list (which may be empty) contains the totals of the regions 
+whose first squares are in the row, in left-to-right order of those first squares.
 
 The regions of a puzzle are validated to ensure that:
 
