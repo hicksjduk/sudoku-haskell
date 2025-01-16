@@ -21,7 +21,7 @@ emptySquare = 0
 gridSize :: Int
 gridSize = length permittedValues
 
-data Puzzle = Puzzle [[Dimension]] Grid deriving Show
+data Puzzle = Puzzle [[Dimension]] Grid deriving (Show, Eq)
 
 type Grid = [[Int]]
 
@@ -122,13 +122,11 @@ withoutValueAt sq v (Dimension emptySquares combs dimType) =
     newCombs = mapMaybe (deleteIfPresent v) combs
 
 removeValue :: [Dimension] -> Int -> Square -> Int -> [Dimension]
-removeValue dims index sq value = sortedNewDims index newDim
+removeValue dims index sq value = case (index, newDim) of
+  (0, _) -> newDims
+  (_, Nothing) -> newDims
+  _ -> let (left, right) = splitAt (index + 1) newDims in sort left ++ right 
   where
-    sortedNewDims 0 _ = newDims
-    sortedNewDims _ Nothing = newDims
-    sortedNewDims i _ =
-      let (left, right) = splitAt (i + 1) newDims 
-      in sort left ++ right
     newDim = withoutValueAt sq value $ dims !! index
     newDims = replaceOrDeleteValueAt index newDim dims
 
@@ -199,27 +197,22 @@ puzzleFrom dims = Puzzle $ map sort dims
 sudokuPuzzle :: Grid -> Puzzle
 sudokuPuzzle grid = puzzleFrom (standardDimensions grid) grid
 
-killerPuzzle :: [String] -> [(Char, Int)] -> Puzzle
-killerPuzzle pattern totals =
-  let regionDims = regionDimensions pattern totals
-  in puzzleFrom (regionDims : standardDimensions emptyGrid) emptyGrid
-
+killerPuzzle :: [(String, [Int])] -> Puzzle
+killerPuzzle puzzleDef = Puzzle (regionDimensions : standardDimensions emptyGrid) emptyGrid
+  where
+    pattern = let patternRow (p, _) = p in map patternRow puzzleDef
+    totals = let totalsInRow (_, t) = t in concatMap totalsInRow puzzleDef
+    sqLists = map (`squaresContaining` pattern) $ nub $ concat pattern
+    regionDimensions = sort $ zipWith makeRegion sqLists totals
+    makeRegion sqs tot = Dimension sqs (combinations (length sqs) tot) RegionD
+    
 emptyGrid :: Grid
 emptyGrid = replicate gridSize $ replicate gridSize emptySquare
 
-regionDimensions :: [String] -> [(Char, Int)] -> [Dimension]
-regionDimensions pattern totals = sort $ map makeRegion (nub $ concat pattern)
-  where
-    makeRegion x = Dimension sq combs RegionD
-      where
-        sq = squaresContaining x pattern
-        total = fromJust $ lookup x totals
-        combs = combinations (length sq) total
-
 squaresContaining :: Eq a => a -> [[a]] -> [Square]
 squaresContaining v grid =
-  let squares row = map (row,)
-  in concat $ zipWith squares [0..] $ map (elemIndices v) grid
+  let squares rowIndex colValues = zip (repeat rowIndex) $ elemIndices v colValues
+  in concat $ zipWith squares [0..] grid
 
 combinations :: Int -> Int -> [[Int]]
 combinations size total = cache !! size !! total
@@ -347,90 +340,28 @@ puzzle = sudokuPuzzle
 killer1 :: Puzzle
 killer1 = killerPuzzle
   [
-    "aabbcddee",
-    "affcccgge",
-    "ffcchccgg",
-    "fijjhjjkg",
-    "iiljjjmkk",
-    "inlooompk",
-    "inooqoopk",
-    "nnorqsopp",
-    "nttrqsuup"
-  ]    [
-    ('a', 14),
-    ('b', 8),
-    ('c', 44),
-    ('d', 15),
-    ('e', 12),
-    ('f', 29),
-    ('g', 26),
-    ('h', 4),
-    ('i', 25),
-    ('j', 36),
-    ('k', 17),
-    ('l', 10),
-    ('m', 7),
-    ('n', 25),
-    ('o', 45),
-    ('p', 35),
-    ('q', 18),
-    ('r', 9),
-    ('s', 10),
-    ('t', 12),
-    ('u', 4)
+    ("aabbcddee", [14, 8, 44, 15, 12]),
+    ("affcccgge", [29, 26]),
+    ("ffcchccgg", [4]),
+    ("fijjhjjkg", [25, 36, 17]),
+    ("iiljjjmkk", [10, 7]),
+    ("inlooompk", [25, 45, 35]),
+    ("inooqoopk", [18]),
+    ("nnorqsopp", [9, 10]),
+    ("nttrqsuup", [12, 4])
   ]
 
 -- Daily 6617
 killer2 :: Puzzle
 killer2 = killerPuzzle
   [
-    "aabbcddef",
-    "gghcciief",
-    "jjhklmnno",
-    "pqqklmrro",
-    "psstttuuv",
-    "wxxyz122v",
-    "w33yz1455",
-    "6788994AA",
-    "67BB9CCDD"
-  ]    [
-    ('a', 14),
-    ('b', 8),
-    ('c', 16),
-    ('d', 10),
-    ('e', 9),
-    ('f', 13),
-    ('g', 7),
-    ('h', 11),
-    ('i', 9),
-    ('j', 10),
-    ('k', 9),
-    ('l', 10),
-    ('m', 12),
-    ('n', 11),
-    ('o', 7),
-    ('p', 8),
-    ('q', 10),
-    ('r', 11),
-    ('s', 12),
-    ('t', 11),
-    ('u', 16),
-    ('v', 4),
-    ('w', 10),
-    ('x', 9),
-    ('y', 17),
-    ('z', 6),
-    ('1', 7),
-    ('2', 12),
-    ('3', 9),
-    ('4', 11),
-    ('5', 8),
-    ('6', 16),
-    ('7', 10),
-    ('8', 5),
-    ('9', 19),
-    ('A', 11),
-    ('B', 11),
-    ('C', 4),
-    ('D', 12)
+    ("aabbcddef", [14, 8, 16, 10, 9, 13]),
+    ("gghcciief", [7, 11, 9]),
+    ("jjhklmnno", [10, 9, 10, 12, 11, 7]),
+    ("pqqklmrro", [8, 10, 11]),
+    ("psstttuuv", [12, 11, 16, 4]),
+    ("wxxyz122v", [10, 9, 17, 6, 7, 12]),
+    ("w33yz1455", [9, 11, 8]),
+    ("6788994AA", [16, 10, 5, 19, 11]),
+    ("67BB9CCDD", [11, 4, 12])
   ]
