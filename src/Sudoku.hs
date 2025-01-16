@@ -21,7 +21,7 @@ emptySquare = 0
 gridSize :: Int
 gridSize = length permittedValues
 
-data Puzzle = Puzzle [[Dimension]] Grid deriving (Show, Eq)
+data Puzzle = Puzzle [[Dimension]] Grid deriving (Eq, Show)
 
 type Grid = [[Int]]
 
