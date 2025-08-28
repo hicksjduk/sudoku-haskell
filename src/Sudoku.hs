@@ -139,8 +139,7 @@ replaceOrDeleteValueAt i v xs =
 deleteIfPresent :: (Eq a) => a -> [a] -> Maybe [a]
 deleteIfPresent x xs = elemIndex x xs <&> (`deleteAt` xs)
   where
-    deleteAt i xs = let (before, _:after) = splitAt i xs
-      in before ++ after
+    deleteAt i = replaceOrDeleteValueAt i Nothing
 
 inDimension :: Square -> Dimension -> Bool
 inDimension sq (Dimension _ _ (RowD row)) = sq `inRow` row
