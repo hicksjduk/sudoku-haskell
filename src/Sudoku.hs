@@ -10,6 +10,7 @@ module Sudoku where
 import Data.List
 import Data.Maybe
 import Data.Function
+import Data.Functor
 import Combine
 import Data.Ord
 import Control.Parallel
@@ -125,7 +126,7 @@ removeValue :: [Dimension] -> Int -> Square -> Int -> [Dimension]
 removeValue dims index sq value = case (index, newDim) of
   (0, _) -> newDims
   (_, Nothing) -> newDims
-  _ -> let (left, right) = splitAt (index + 1) newDims in sort left ++ right 
+  _ -> let (left, right) = splitAt (index + 1) newDims in sort left ++ right
   where
     newDim = withoutValueAt sq value $ dims !! index
     newDims = replaceOrDeleteValueAt index newDim dims
@@ -136,9 +137,10 @@ replaceOrDeleteValueAt i v xs =
   in before ++ maybe after (:after) v
 
 deleteIfPresent :: (Eq a) => a -> [a] -> Maybe [a]
-deleteIfPresent i xs =
-  let ys = delete i xs
-  in if length xs == length ys then Nothing else Just ys
+deleteIfPresent x xs = elemIndex x xs <&> (`deleteAt` xs)
+  where
+    deleteAt i xs = let (before, _:after) = splitAt i xs
+      in before ++ after
 
 inDimension :: Square -> Dimension -> Bool
 inDimension sq (Dimension _ _ (RowD row)) = sq `inRow` row
@@ -205,7 +207,7 @@ killerPuzzle puzzleDef = Puzzle (regionDimensions : standardDimensions emptyGrid
     sqLists = map (`squaresContaining` pattern) $ nub $ concat pattern
     regionDimensions = sort $ zipWith makeRegion sqLists totals
     makeRegion sqs tot = Dimension sqs (combinations (length sqs) tot) RegionD
-    
+
 emptyGrid :: Grid
 emptyGrid = replicate gridSize $ replicate gridSize emptySquare
 
@@ -252,7 +254,7 @@ hasDuplicates :: Eq a => [a] -> Bool
 hasDuplicates xs = length xs /= length (nub xs)
 
 validate :: Puzzle -> Either String Puzzle
-validate p@(Puzzle dimsByType grid) = 
+validate p@(Puzzle dimsByType grid) =
   let regionDims = concat $ filter (isRegion . head) dimsByType
   in validateGrid grid >>= validateRegions regionDims >> return p
 
