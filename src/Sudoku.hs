@@ -10,7 +10,6 @@ module Sudoku where
 import Data.List
 import Data.Maybe
 import Data.Function
-import Data.Functor
 import Combine
 import Data.Ord
 import Control.Parallel
@@ -137,7 +136,7 @@ replaceOrDeleteValueAt i v xs =
   in before ++ maybe after (:after) v
 
 deleteIfPresent :: (Eq a) => a -> [a] -> Maybe [a]
-deleteIfPresent x xs = elemIndex x xs <&> (`deleteAt` xs)
+deleteIfPresent x xs = (`deleteAt` xs) <$> elemIndex x xs
   where
     deleteAt i = replaceOrDeleteValueAt i Nothing
 
