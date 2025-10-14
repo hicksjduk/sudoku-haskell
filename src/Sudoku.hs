@@ -76,7 +76,7 @@ emptySquareData :: Puzzle -> [SquareData]
 emptySquareData (Puzzle dimsByType _) = map squareData emptySq
   where
     squareData sq = SquareData sq $ containingDimensionData sq dimsByType
-    emptySq = concatMap emptySquares $ sort $ map head $ filter (not . null) dimsByType
+    emptySq = concatMap emptySquares $ sort $ concatMap (take 1) dimsByType
 
 emptySquares :: Dimension -> [Square]
 emptySquares (Dimension sq _ _) = sq
