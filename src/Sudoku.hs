@@ -50,7 +50,7 @@ instance Show DimensionData where
 type ValueRemover = (Int -> [Dimension])
 
 sudoku :: Puzzle -> Either String Grid
-sudoku p = if parametersValid then solveIt =<< validate p else Left "Invalid"
+sudoku p = validateParameters p >>= validate >>= solveIt
   where
     solveIt p = case solve p of
       [] -> Left "No solution found"
@@ -221,15 +221,15 @@ combinations size total = cache !! size !! total
     cacheBy s = map (combs s) [0..]
     combs s t = filter ((== t) . sum) $ combineExactLength s permittedValues
 
-parametersValid :: Bool
-parametersValid
+validateParameters :: Puzzle -> Either String Puzzle
+validateParameters p
   | gridSize == 0 =
-    error "Grid size is 0"
+    Left "Grid size is 0"
   | hasDuplicates permittedValues =
-    error "Permitted values include duplicate(s)"
+    Left "Permitted values include duplicate(s)"
   | emptySquare `elem` permittedValues =
-    error "Empty square value is also a permitted value"
-  | otherwise = True
+    Left "Empty square value is also a permitted value"
+  | otherwise = return p
 
 boxSize :: (Int, Int)
 boxSize = (rows, cols)
