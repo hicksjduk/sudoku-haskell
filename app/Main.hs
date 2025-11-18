@@ -2,9 +2,9 @@
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# OPTIONS_GHC -Wno-compat-unqualified-imports #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 
-module Main (main) where
-
+module Main where
 import Sudoku
 import System.Environment
 import Data.Foldable
