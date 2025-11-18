@@ -10,7 +10,6 @@ import System.Environment
 import Data.Foldable
 import Data.Time.Clock
 
-main :: IO ()
 main = do
   args <- getArgs
   start <- getCurrentTime
