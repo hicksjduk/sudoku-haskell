@@ -4,7 +4,7 @@ This repo contains a simple solver for Sudoku and Killer Sudoku puzzles, written
 It is constructed using the `stack` tool.
 
 To run the solver, with the base directory of the repo as the current directory type the command 
-`stack run sudoku`. This will solve the puzzle that is defined using the name `puzzle`, which
+`stack run`. This will solve the puzzle that is defined using the name `puzzle`, which
 is [the one which was 
 claimed in 2012 to be the hardest Sudoku ever devised](https://abcnews.go.com/blogs/headlines/2012/06/can-you-solve-the-hardest-ever-sudoku). On my
 computer, it takes about a third of a second to solve

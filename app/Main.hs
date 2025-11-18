@@ -13,7 +13,7 @@ import Data.Time.Clock
 main = do
   args <- getArgs
   start <- getCurrentTime
-  putStrLn $ printRes $ sudoku $ puzzleSelect $ tail $ toList args
+  putStrLn $ printRes $ sudoku $ puzzleSelect $ toList args
   end <- getCurrentTime
   putStrLn $ unwords ["Done in", show $ diffUTCTime end start]
 
