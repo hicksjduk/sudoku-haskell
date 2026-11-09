@@ -91,7 +91,7 @@ The `solve` function uses a straightforward algorithm which tries every possibil
 For any given puzzle:
 
 * Find an empty square. If there is no empty square, the puzzle is solved.
-* Determine which values can go into the empty square, A value can only go into the square if 
+* Determine which values can go into the empty square. A value can only go into the square if 
 it is one of the possible values in every dimension that contains the square.
 * For each such value, make a copy of the puzzle where the 
 0 at the relevant position in the source grid is replaced with that value, and solve the revised 
