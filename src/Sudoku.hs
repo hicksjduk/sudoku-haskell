@@ -38,7 +38,7 @@ instance Ord Dimension where
     let criteria = [length . emptySquares, length . possibleValues]
     in foldMap (compare `on`) criteria
 
-data DimensionType = RowD Int | ColumnD Int | BoxD Box | RegionD deriving (Eq, Show)
+data DimensionType = RowD Int | ColumnD Int | BoxD Box | CageD deriving (Eq, Show)
 
 data SquareData = SquareData Square [DimensionData] deriving (Show)
 
@@ -144,7 +144,7 @@ inDimension :: Square -> Dimension -> Bool
 inDimension sq (Dimension _ _ (RowD row)) = sq `inRow` row
 inDimension sq (Dimension _ _ (ColumnD col)) = sq `inColumn` col
 inDimension sq (Dimension _ _ (BoxD box)) = sq `inBox` box
-inDimension sq (Dimension emptySquares _ RegionD) = sq `elem` emptySquares
+inDimension sq (Dimension emptySquares _ CageD) = sq `elem` emptySquares
 
 inRow :: Square -> Int -> Bool
 inRow (row, _) = (== row)
@@ -198,13 +198,13 @@ sudokuPuzzle :: Grid -> Puzzle
 sudokuPuzzle grid = puzzleFrom (standardDimensions grid) grid
 
 killerPuzzle :: [(String, [Int])] -> Puzzle
-killerPuzzle puzzleDef = Puzzle (regionDimensions : standardDimensions emptyGrid) emptyGrid
+killerPuzzle puzzleDef = Puzzle (cageDimensions : standardDimensions emptyGrid) emptyGrid
   where
     pattern = let patternRow (p, _) = p in map patternRow puzzleDef
     totals = let totalsInRow (_, t) = t in concatMap totalsInRow puzzleDef
     sqLists = map (`squaresContaining` pattern) $ nub $ concat pattern
-    regionDimensions = sort $ zipWith makeRegion sqLists totals
-    makeRegion sqs tot = Dimension sqs (combinations (length sqs) tot) RegionD
+    cageDimensions = sort $ zipWith makeCage sqLists totals
+    makeCage sqs tot = Dimension sqs (combinations (length sqs) tot) CageD
 
 emptyGrid :: Grid
 emptyGrid = replicate gridSize $ replicate gridSize emptySquare
@@ -253,12 +253,12 @@ hasDuplicates xs = length xs /= length (nub xs)
 
 validate :: Puzzle -> Either String Puzzle
 validate p@(Puzzle dimsByType grid) =
-  let regionDims = concat $ filter (isRegion . head) dimsByType
-  in validateGrid grid >>= validateRegions regionDims >> return p
+  let cageDims = concat $ filter (isCage . head) dimsByType
+  in validateGrid grid >>= validateCages cageDims >> return p
 
-isRegion :: Dimension -> Bool
-isRegion (Dimension _ _ RegionD) = True
-isRegion Dimension {} = False
+isCage :: Dimension -> Bool
+isCage (Dimension _ _ CageD) = True
+isCage Dimension {} = False
 
 validateGrid :: Grid -> Either String Grid
 validateGrid grid
@@ -284,19 +284,19 @@ validateGrid grid
         values = concatMap (slice cols) $ slice rows grid
         slice (x, y) xs = drop x $ take (y-1) xs
 
-validateRegions :: [Dimension] -> Grid -> Either String [Dimension]
-validateRegions [] _ = return []
-validateRegions ds grid
+validateCages :: [Dimension] -> Grid -> Either String [Dimension]
+validateCages [] _ = return []
+validateCages ds grid
   | any totalOutOfRange ds =
-    Left "Region total out of permitted range"
+    Left "Cage total out of permitted range"
   | sum (map total ds) /= (gridSize * sum permittedValues) - sum (map sum grid) =
-    Left "Region totals incorrect"
+    Left "Cage totals incorrect"
   | any sizeOutOfRange ds =
-    Left "Incorrect number of squares in regions"
+    Left "Incorrect number of squares in cages"
   | length sq /= length emptySq =
-    Left "Incorrect number of squares in regions"
+    Left "Incorrect number of squares in cages"
   | not (all (`elem` emptySq) sq) =
-    Left "Square in region is not empty"
+    Left "Square in cage is not empty"
   | any indexOutOfRange sq =
     Left "Square index out of range"
   | otherwise = return ds
@@ -314,15 +314,15 @@ size (Dimension sq _ _) = length sq
 total :: Dimension -> Int
 total (Dimension _ (c:_) _) = sum c
 
-minRegionTotal :: Int -> Int
-minRegionTotal count = (sum . take count . sort) permittedValues
+minCageTotal :: Int -> Int
+minCageTotal count = (sum . take count . sort) permittedValues
 
-maxRegionTotal :: Int -> Int
-maxRegionTotal count = (sum . take count . sortBy (comparing Data.Ord.Down)) permittedValues
+maxCageTotal :: Int -> Int
+maxCageTotal count = (sum . take count . sortBy (comparing Data.Ord.Down)) permittedValues
 
 totalOutOfRange :: Dimension -> Bool
 totalOutOfRange d = let count = size d
-  in not $ inRange (total d) (minRegionTotal count, maxRegionTotal count)
+  in not $ inRange (total d) (minCageTotal count, maxCageTotal count)
 
 puzzle :: Puzzle
 puzzle = sudokuPuzzle

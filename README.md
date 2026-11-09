@@ -44,35 +44,35 @@ squares.
 ### Killer Sudoku
 
 A Killer Sudoku puzzle is like a Sudoku puzzle, but the information that is used to solve
-the puzzle is supplied not by seeding the grid with values, but by dividing it into regions.
-A region is a collection of
+the puzzle is supplied not by seeding the grid with values, but by dividing it into cages.
+A cage is a collection of
 up to nine squares whose values in the solution are all different, and add up
-to the total associated with the region.
-A region is normally denoted in a printed puzzle by a dotted outline
-enclosing its squares, and a number (its total) above the square in the region that is closest to
+to the total associated with the cage.
+A cage is normally denoted in a printed puzzle by a dotted outline
+enclosing its squares, and a number (its total) above the square in the cage that is closest to
 the top left-hand corner of the puzzle.
 
 In the input representation of a Killer Sudoku puzzle, each row of the grid is represented by a tuple containing
 a `String` and a list of `Int`. In the string, each square in the row is represented by a character which uniquely
-identifies the region to which the square belongs. The list (which may be empty) contains the totals of the regions 
+identifies the cage to which the square belongs. The list (which may be empty) contains the totals of the cages 
 whose first squares are in the row, in left-to-right order of those first squares.
 
-The regions of a puzzle are validated to ensure that:
+The cages of a puzzle are validated to ensure that:
 
-* the size of each region (the number of squares it contains) is not less than 1 and not more than 9.
-* the total of each region is not less than the minimum, and not more than the maximum, total for a region of the
+* the size of each cage (the number of squares it contains) is not less than 1 and not more than 9.
+* the total of each cage is not less than the minimum, and not more than the maximum, total for a cage of the
 specified size.
-* the totals of all the regions add up to 405, which is the only possible sum of all the values in the grid.
+* the totals of all the cages add up to 405, which is the only possible sum of all the values in the grid.
 
 ## Data structures
 
 The basic unit of information that is used to solve a puzzle is the `Dimension`. A dimension is a set of squares
-which all have to contain different values in the solution; each row, column, box and (if appropriate) region is a
+which all have to contain different values in the solution; each row, column, box and (if appropriate) cage is a
 dimension. At any given stage in the solution of a puzzle, a dimension contains a list of its empty squares, and
 a list of the combinations of values that can appear in those empty squares.
 
 A `Puzzle` contains a list of lists of `Dimensions`, with the dimensions being grouped by type 
-(row, column, box, region). The grouping by type means (in particular) that it is much more efficient 
+(row, column, box, cage). The grouping by type means (in particular) that it is much more efficient 
 to search for the dimensions that contain a particular square, since we know that a square only appears
 in one dimension of each type. Each list of dimensions of a particular type is sorted in ascending order
 of (a) the number of empty squares and (b) the number of possible values; and, when determining which
@@ -109,14 +109,15 @@ entirely driven by the assignment of two fields at the top of the file:
 
 * `permittedValues`, which is a list containing the values that can validly be
 inserted into a square. The size of this also determines the grid size, which is the
-number of squares in each row, column and box.
+number of squares in each row, column and box, and the maximum number of squares in a
+cage.
 * `emptySquare`, which is the value that represents an empty square.
 
 By default, these are set respectively to the values 1 to 9 inclusive and 0; but
 different values could be specified to deal with differently-sized puzzles. 
 The only constraints on this (which are validated, and if violated cause
 an error)
-are that `permittedValues` should not be empty, or contain duplicate values or the value of `emptySquare`.
+are that `permittedValues` must not be empty, or contain duplicate values or the value of `emptySquare`.
 
 The sizes of the boxes within the puzzle are calculated based on the convention that:
 
